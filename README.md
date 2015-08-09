@@ -1,2 +1,3 @@
 # nginx-1.9.0-with-comment
-nginx-1.9.0 source code with comment.
+本项目仅供自己学习阅读nginx源码使用
+逐步添加各个模块的注释以及相关源码解析的参考资料
