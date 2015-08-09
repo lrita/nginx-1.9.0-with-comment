@@ -58,7 +58,24 @@ static u_char            cached_syslog_time[NGX_TIME_SLOTS]
 static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+/*
+在linux中，nginx通过gettimeofday()获取系统当前时间；
+gettimeofday是C库提供的函数（不是系统调用），它封装了内核里的sys_gettimeofday系统调用。
+Linux的系统调用通过int 80h实现，用系统调用号来区分入口函数，步骤大致如下：
+1 API将系统调用号存入EAX，然后通过中断调用使系统进入内核态；
+2 内核中的中断处理函数根据系统调用号，调用对应的内核函数（系统调用）；
+3 系统调用完成相应功能，将返回值存入EAX，返回到中断处理函数；
+4 中断处理函数返回到API中；
+5 API将EAX返回给应用程序
 
+然而除了基本的系统调用外，x86_64还提供了sysenter/vsyscall方式获取内核态数据，vsyscall在内存中创建内核态的共享页面，用户态也有权访问，可不经过系统中断和陷入内核获取内核信息；
+gettimeofday()便是通过vsyscall实现了系统调用。
+
+为避免每次都调用OS的gettimeofday，nginx采用时间缓存，每个worker进程都能自行维护；
+为控制并发访问，每次更新时间缓存前需申请锁，而读时间缓存无须加锁；
+为避免分裂读，即某worker进程读时间缓存过程中接受中断请求，期间时间缓存被其他worker更新，导致前后读取时间不一致；nginx引入时间缓存数组(共64个成员)，每次都更新数组中的下一个元素；
+更新时间通过ngx_time_update()实现
+*/
 void
 ngx_time_init(void)
 {
@@ -176,7 +193,7 @@ ngx_time_update(void)
                        months[tm.ngx_tm_mon - 1], tm.ngx_tm_mday,
                        tm.ngx_tm_hour, tm.ngx_tm_min, tm.ngx_tm_sec);
 
-    ngx_memory_barrier();
+    ngx_memory_barrier();//禁止编译器对后面的语句优化，如果没有这个限制，编译器可能将前后两部分代码合并，可能导致这6个时间更新出现间隔，期间若被读取会出现时间不一致的情况
 
     ngx_cached_time = tp;
     ngx_cached_http_time.data = p0;
@@ -192,7 +209,7 @@ ngx_time_update(void)
 #if !(NGX_WIN32)
 
 void
-ngx_time_sigsafe_update(void)
+ngx_time_sigsafe_update(void)	//由于localtime等函数不是异步信号安全的所以 提供2个update函数供不同场景调用
 {
     u_char          *p, *p2;
     ngx_tm_t         tm;
