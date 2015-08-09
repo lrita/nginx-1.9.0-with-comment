@@ -18,7 +18,7 @@ static ngx_int_t ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src,
 
 
 void
-ngx_strlow(u_char *dst, u_char *src, size_t n)
+ngx_strlow(u_char *dst, u_char *src, size_t n)	//字符串转小写
 {
     while (n) {
         *dst = ngx_tolower(*src);
@@ -30,7 +30,7 @@ ngx_strlow(u_char *dst, u_char *src, size_t n)
 
 
 u_char *
-ngx_cpystrn(u_char *dst, u_char *src, size_t n)
+ngx_cpystrn(u_char *dst, u_char *src, size_t n)	//strncpy
 {
     if (n == 0) {
         return dst;
@@ -54,7 +54,7 @@ ngx_cpystrn(u_char *dst, u_char *src, size_t n)
 
 
 u_char *
-ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
+ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)	//从pool上分配内存 strdup
 {
     u_char  *dst;
 
@@ -130,7 +130,7 @@ ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
 
 
 u_char * ngx_cdecl
-ngx_slprintf(u_char *buf, u_char *last, const char *fmt, ...)
+ngx_slprintf(u_char *buf, u_char *last, const char *fmt, ...)	//len = last - buf
 {
     u_char   *p;
     va_list   args;
@@ -475,8 +475,8 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
 
 
 static u_char *
-ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64, u_char zero,
-    ngx_uint_t hexadecimal, ngx_uint_t width)
+ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64, u_char zero,	//数字转字符串 last边界、ui64数值、zero是否用0补齐
+    ngx_uint_t hexadecimal, ngx_uint_t width)				//hexadecimal 0:十进制 1:十六进制小写 2:十六进制大写
 {
     u_char         *p, temp[NGX_INT64_LEN + 1];
                        /*
@@ -568,7 +568,7 @@ ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64, u_char zero,
  */
 
 ngx_int_t
-ngx_strcasecmp(u_char *s1, u_char *s2)
+ngx_strcasecmp(u_char *s1, u_char *s2)	//strcasecmp
 {
     ngx_uint_t  c1, c2;
 
@@ -594,7 +594,7 @@ ngx_strcasecmp(u_char *s1, u_char *s2)
 
 
 ngx_int_t
-ngx_strncasecmp(u_char *s1, u_char *s2, size_t n)
+ngx_strncasecmp(u_char *s1, u_char *s2, size_t n)	//strncasecmp
 {
     ngx_uint_t  c1, c2;
 
@@ -623,7 +623,7 @@ ngx_strncasecmp(u_char *s1, u_char *s2, size_t n)
 
 
 u_char *
-ngx_strnstr(u_char *s1, char *s2, size_t len)
+ngx_strnstr(u_char *s1, char *s2, size_t len)	//带len长度限制的strstr
 {
     u_char  c1, c2;
     size_t  n;
@@ -745,7 +745,7 @@ ngx_strlcasestrn(u_char *s1, u_char *last, u_char *s2, size_t n)
 
 
 ngx_int_t
-ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)
+ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)	//反向比较
 {
     if (n == 0) {
         return 0;
@@ -768,7 +768,7 @@ ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)
 
 
 ngx_int_t
-ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n)
+ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n)	//反向比较
 {
     u_char  c1, c2;
 
@@ -803,7 +803,7 @@ ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n)
 
 
 ngx_int_t
-ngx_memn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2)
+ngx_memn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2)//如果前n(n=min(n1,n2)不相等则跟memcpy一样，如果前n位相等并且n1!=n2,则返回n1<=n2?-1:1)
 {
     size_t     n;
     ngx_int_t  m, z;
@@ -828,7 +828,7 @@ ngx_memn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2)
 
 
 ngx_int_t
-ngx_dns_strcmp(u_char *s1, u_char *s2)
+ngx_dns_strcmp(u_char *s1, u_char *s2)	//由于DNS在报文中存在randomize case 所以与要类似strcasecmp
 {
     ngx_uint_t  c1, c2;
 
@@ -1428,7 +1428,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
     uint32_t       *escape;
     static u_char   hex[] = "0123456789ABCDEF";
 
-                    /* " ", "#", "%", "?", %00-%1F, %7F-%FF */
+                    /* " ", "#", "%", "?", %00-%1F, %7F-%FF */		//这行注释为下表中需要转码的值
 
     static uint32_t   uri[] = {
         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
@@ -1550,7 +1550,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 
                     /* mail_auth is the same as memcached */
 
-    static uint32_t  *map[] =
+    static uint32_t  *map[] =							//以上各个表中为1的bit对应的ascii顺位的char为需要进行转码的
         { uri, args, uri_component, html, refresh, memcached, memcached };
 
 
@@ -1570,7 +1570,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
             size--;
         }
 
-        return (uintptr_t) n;
+        return (uintptr_t) n;							//dst为NULL时，该函数只计算有多少char需要进行转码
     }
 
     while (size) {
@@ -1591,13 +1591,13 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 
 
 void
-ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)
+ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)	
 {
-    u_char  *d, *s, ch, c, decoded;
-    enum {
-        sw_usual = 0,
-        sw_quoted,
-        sw_quoted_second
+    u_char  *d, *s, ch, c, decoded;	//对src进行反编码，type可以是0、NGX_UNESCAPE_URI、NGX_UNESCAPE_REDIRECT这三个值。
+    enum {				//如果是0，则表示src中的所有字符都要进行转码。
+        sw_usual = 0,			//如果是NGX_UNESCAPE_URI与NGX_UNESCAPE_REDIRECT，则遇到’?’后就结束了，后面的字符就不管了。
+        sw_quoted,			//而NGX_UNESCAPE_URI与NGX_UNESCAPE_REDIRECT之间的区别是
+        sw_quoted_second		//NGX_UNESCAPE_URI对于遇到的需要转码的字符，都会转码，而NGX_UNESCAPE_REDIRECT则只会对非可见字符进行转码。
     } state;
 
     d = *dst;
@@ -1721,9 +1721,9 @@ done:
 
 
 uintptr_t
-ngx_escape_html(u_char *dst, u_char *src, size_t size)
-{
-    u_char      ch;
+ngx_escape_html(u_char *dst, u_char *src, size_t size)	//对HTML进行编码 <html> -->  &lt;html&gt;
+{							//dst == NULL时 只返回编码后增加多少长度
+    u_char      ch;					//dst != NULL时 返回dst
     ngx_uint_t  len;
 
     if (dst == NULL) {
@@ -1793,7 +1793,7 @@ ngx_escape_html(u_char *dst, u_char *src, size_t size)
 
 
 uintptr_t
-ngx_escape_json(u_char *dst, u_char *src, size_t size)
+ngx_escape_json(u_char *dst, u_char *src, size_t size)	//json编码	dst==NULL时 返回增加长度
 {
     u_char      ch;
     ngx_uint_t  len;
