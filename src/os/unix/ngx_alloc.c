@@ -54,7 +54,7 @@ ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
     void  *p;
     int    err;
 
-    err = posix_memalign(&p, alignment, size);
+    err = posix_memalign(&p, alignment, size);	//http://blog.chinaunix.net/uid-26335251-id-3365804.html
 
     if (err) {
         ngx_log_error(NGX_LOG_EMERG, log, err,
