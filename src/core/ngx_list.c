@@ -10,9 +10,9 @@
 
 
 ngx_list_t *
-ngx_list_create(ngx_pool_t *pool, ngx_uint_t n, size_t size)
-{
-    ngx_list_t  *list;
+ngx_list_create(ngx_pool_t *pool, ngx_uint_t n, size_t size)	//分配内存使用的pool
+{								//每个节点固定长度的数组的长度
+    ngx_list_t  *list;						//存放的具体元素的个数
 
     list = ngx_palloc(pool, sizeof(ngx_list_t));
     if (list == NULL) {
@@ -28,7 +28,7 @@ ngx_list_create(ngx_pool_t *pool, ngx_uint_t n, size_t size)
 
 
 void *
-ngx_list_push(ngx_list_t *l)
+ngx_list_push(ngx_list_t *l)//该函数在给定的list的尾部追加一个元素，并返回指向新元素存放空间的指针。如果追加失败，则返回NULL
 {
     void             *elt;
     ngx_list_part_t  *last;
