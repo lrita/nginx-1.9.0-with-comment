@@ -11,6 +11,8 @@
 
 void *
 ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
+	//在hash里面查找key对应的value。实际上这里的key是对真正的key（也就是name）计算出的hash值。len是name的长度
+	//如果查找成功，则返回指向value的指针，否则返回NULL
 {
     ngx_uint_t       i;
     ngx_hash_elt_t  *elt;
@@ -51,6 +53,10 @@ ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
 
 void *
 ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
+	//该函数查询包含通配符在前的key的hash表的
+	//hwc:	hash表对象的指针。
+	//name:	需要查询的域名，例如: www.abc.com。
+	//len:	name的长度
 {
     void        *value;
     ngx_uint_t   i, n, key;
@@ -145,6 +151,7 @@ ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 
 void *
 ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
+	//该函数查询包含通配符在末尾的key的hash表的
 {
     void        *value;
     ngx_uint_t   i, key;
@@ -210,6 +217,13 @@ ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 void *
 ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
     size_t len)
+	//该函数在此组合hash表中，依次查询其三个子hash表，看是否匹配，一旦找到，
+	//立即返回查找结果，也就是说如果有多个可能匹配，则只返回第一个匹配的结果。
+	//hash:	此组合hash表对象。
+	//key:	根据name计算出的hash值。
+	//name:	key的具体内容。
+	//len:	name的长度。
+	//返回查询的结果，未查到则返回NULL。
 {
     void  *value;
 
@@ -250,6 +264,9 @@ ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
 
 ngx_int_t
 ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
+	//该函数的第一个参数hinit是初始化的一些参数的一个集合。 
+	//names是初始化一个ngx_hash_t所需要的所有key的一个数组。
+	//而nelts就是key的个数
 {
     u_char          *elts;
     size_t           len;
@@ -260,6 +277,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
     for (n = 0; n < nelts; n++) {
         if (hinit->bucket_size < NGX_HASH_ELT_SIZE(&names[n]) + sizeof(void *))
         {
+	//发现某个桶里面无法存的下所有属于该桶的元素，则hash表初始化失败
             ngx_log_error(NGX_LOG_EMERG, hinit->pool->log, 0,
                           "could not build the %s, you should "
                           "increase %s_bucket_size: %i",
@@ -454,9 +472,39 @@ found:
 }
 
 
+/*
+nginx为了处理带有通配符的域名的匹配问题，实现了ngx_hash_wildcard_t这样的hash表。
+他可以支持两种类型的带有通配符的域名。一种是通配符在前的，例如：“*.abc.com”，也
+可以省略掉星号，直接写成”.abc.com”。这样的key，可以匹配www.abc.com，qqq.www.abc.com
+之类的。另外一种是通配符在末尾的，例如：“mail.xxx.*”，请特别注意通配符在末尾的不
+像位于开始的通配符可以被省略掉。这样的通配符，可以匹配mail.xxx.com、mail.xxx.com.cn、
+mail.xxx.net之类的域名。
+
+有一点必须说明，就是一个ngx_hash_wildcard_t类型的hash表只能包含通配符在前的key或者是
+通配符在后的key。不能同时包含两种类型的通配符的key。ngx_hash_wildcard_t类型变量的构建
+是通过函数ngx_hash_wildcard_init完成的，而查询是通过函数ngx_hash_find_wc_head或者
+ngx_hash_find_wc_tail来做的。ngx_hash_find_wc_head是查询包含通配符在前的key的hash表的，
+而ngx_hash_find_wc_tail是查询包含通配符在后的key的hash表的
+*/
 ngx_int_t
 ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
     ngx_uint_t nelts)
+	//hinit:	构造一个通配符hash表的一些参数的一个集合
+	//names:	构造此hash表的所有的通配符key的数组。
+	//特别要注意的是这里的key已经都是被预处理过的。
+	//例如：“*.abc.com”或者“.abc.com”被预处理完成以后，变成了“com.abc.”。
+	//而“mail.xxx.*”则被预处理为“mail.xxx.”。
+	//为什么会被处理这样？这里不得不简单地描述一下通配符hash表的实现原理。
+	//当构造此类型的hash表的时候，实际上是构造了一个hash表的一个“链表”，
+	//是通过hash表中的key“链接”起来的。比如：对于“*.abc.com”将会构造出2个hash表，
+	//第一个hash表中有一个key为com的表项，该表项的value包含有指向第二个hash表的
+	//指针，而第二个hash表中有一个表项abc，该表项的value包含有指向*.abc.com对应
+	//的value的指针。那么查询的时候，比如查询www.abc.com的时候，先查com，通过查
+	//com可以找到第二级的hash表，在第二级hash表中，再查找abc，依次类推，直到在某
+	//一级的hash表中查到的表项对应的value对应一个真正的值而非一个指向下一级hash
+	//表的指针的时候，查询过程结束。这里有一点需要特别注意的，就是names数组中元素
+	//的value值低两位bit必须为0（有特殊用途）。如果不满足这个条件，这个hash表查询不出正确结果。
+	//nelts:	names数组元素的个数
 {
     size_t                len, dot_len;
     ngx_uint_t            i, n, dot;
@@ -601,6 +649,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 
 ngx_uint_t
 ngx_hash_key(u_char *data, size_t len)
+	//计算hash值
 {
     ngx_uint_t  i, key;
 
@@ -616,6 +665,7 @@ ngx_hash_key(u_char *data, size_t len)
 
 ngx_uint_t
 ngx_hash_key_lc(u_char *data, size_t len)
+	//不区分大小写计算hash值
 {
     ngx_uint_t  i, key;
 
@@ -631,6 +681,7 @@ ngx_hash_key_lc(u_char *data, size_t len)
 
 ngx_uint_t
 ngx_hash_strlow(u_char *dst, u_char *src, size_t n)
+	//将src的转换为小写，copy到dst，同时计算hash值
 {
     ngx_uint_t  key;
 
@@ -649,6 +700,10 @@ ngx_hash_strlow(u_char *dst, u_char *src, size_t n)
 
 ngx_int_t
 ngx_hash_keys_array_init(ngx_hash_keys_arrays_t *ha, ngx_uint_t type)
+	//初始化这个结构，主要是对这个结构中的ngx_array_t类型的字段进行初始化，成功返回NGX_OK
+	//ha:	该结构的对象指针。
+	//type:	该字段有2个值可选择，即NGX_HASH_SMALL和NGX_HASH_LARGE。用来指明将要建立的hash
+	//表的类型，如果是NGX_HASH_SMALL，则有比较小的桶的个数和数组元素大小。NGX_HASH_LARGE则相反。
 {
     ngx_uint_t  asize;
 
@@ -705,6 +760,15 @@ ngx_hash_keys_array_init(ngx_hash_keys_arrays_t *ha, ngx_uint_t type)
 ngx_int_t
 ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
     ngx_uint_t flags)
+	//一般是循环调用这个函数，把一组键值对加入到这个结构体中。
+	//返回NGX_OK是加入成功。返回NGX_BUSY意味着key值重复
+	//ha:	该结构的对象指针。
+	//key:	参数名自解释了。
+	//value:	参数名自解释了。
+	//flags:	有两个标志位可以设置，NGX_HASH_WILDCARD_KEY和NGX_HASH_READONLY_KEY。
+	//同时要设置的使用逻辑与操作符就可以了。NGX_HASH_READONLY_KEY被设置的时候，在计算
+	//hash值的时候，key的值不会被转成小写字符，否则会。NGX_HASH_WILDCARD_KEY被设置的时候，
+	//说明key里面可能含有通配符，会进行相应的处理。如果两个标志位都不设置，传0。
 {
     size_t           len;
     u_char          *p;
