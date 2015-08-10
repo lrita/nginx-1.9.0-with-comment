@@ -15,7 +15,7 @@
 
 typedef struct ngx_queue_s  ngx_queue_t;
 
-struct ngx_queue_s {
+struct ngx_queue_s {//类似kernel中双向链表
     ngx_queue_t  *prev;
     ngx_queue_t  *next;
 };
