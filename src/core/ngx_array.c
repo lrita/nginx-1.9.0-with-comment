@@ -10,9 +10,9 @@
 
 
 ngx_array_t *
-ngx_array_create(ngx_pool_t *p, ngx_uint_t n, size_t size)
-{
-    ngx_array_t *a;
+ngx_array_create(ngx_pool_t *p, ngx_uint_t n, size_t size)	//p数组分配内存使用的内存池
+{								//n数组的初始容量大小，即在不扩容的情况下最多可以容纳的元素个数
+    ngx_array_t *a;						//size单个元素的大小，单位是字节
 
     a = ngx_palloc(p, sizeof(ngx_array_t));
     if (a == NULL) {
@@ -28,7 +28,7 @@ ngx_array_create(ngx_pool_t *p, ngx_uint_t n, size_t size)
 
 
 void
-ngx_array_destroy(ngx_array_t *a)
+ngx_array_destroy(ngx_array_t *a)//把array使用的内存返还给pool
 {
     ngx_pool_t  *p;
 
@@ -45,9 +45,9 @@ ngx_array_destroy(ngx_array_t *a)
 
 
 void *
-ngx_array_push(ngx_array_t *a)
-{
-    void        *elt, *new;
+ngx_array_push(ngx_array_t *a)	//在数组a上新追加一个元素，并返回指向新元素的指针。
+{				//需要把返回的指针使用类型转换，转换为具体的类型，
+    void        *elt, *new;	//然后再给新元素本身或者是各字段（如果数组的元素是复杂类型）赋值
     size_t       size;
     ngx_pool_t  *p;
 
@@ -92,7 +92,7 @@ ngx_array_push(ngx_array_t *a)
 
 
 void *
-ngx_array_push_n(ngx_array_t *a, ngx_uint_t n)
+ngx_array_push_n(ngx_array_t *a, ngx_uint_t n)//在数组a上追加n个元素，并返回指向这些追加元素的首个元素的位置的指针
 {
     void        *elt, *new;
     size_t       size;
