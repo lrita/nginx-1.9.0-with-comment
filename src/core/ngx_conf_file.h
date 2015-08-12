@@ -99,32 +99,48 @@ struct ngx_open_file_s {
 #define NGX_MODULE_V1          0, 0, 0, 0, 0, 0, 1
 #define NGX_MODULE_V1_PADDING  0, 0, 0, 0, 0, 0, 0, 0
 
+//ngx_module_s是模块的定义
 struct ngx_module_s {
-    ngx_uint_t            ctx_index;
-    ngx_uint_t            index;
+    ngx_uint_t            ctx_index;	//分类的模块计数器
+					//nginx模块可以分为四种：core、event、http和mail
+					//每个模块都会各自计数，ctx_index就是每个模块在其所属类组的计数
+    					//对于一类模块（由下面的type成员决定类别）而言，ctx_index标示当
+    					//前模块在这类模块中的序号。这个成员常常是由管理这类模块的一个
+    					//nginx核心模块设置的，对于所有的HTTP模块而言，ctx_index是由核
+    					//心模块ngx_http_module设置的。
 
-    ngx_uint_t            spare0;
+    ngx_uint_t            index;	//index表示当前模块在ngx_modules数组中的序号。Nginx启动的时候
+    					//会根据ngx_modules数组设置各个模块的index值
+
+    ngx_uint_t            spare0;	//spare系列的保留变量，暂未使用
     ngx_uint_t            spare1;
     ngx_uint_t            spare2;
     ngx_uint_t            spare3;
 
-    ngx_uint_t            version;
+    ngx_uint_t            version;	//nginx模块版本
 
-    void                 *ctx;
-    ngx_command_t        *commands;
-    ngx_uint_t            type;
+    void                 *ctx;		//模块的上下文，不同种类的模块有不同的上下文，因此实现了四种结构体
+    					//模块上下文，每个模块有不同模块上下文,每个模块都有自己的特性，而
+    					//ctx会指向特定类型模块的公共接口
+    					//比如，在HTTP模块中，ctx需要指向ngx_http_module_t结构体。
 
-    ngx_int_t           (*init_master)(ngx_log_t *log);
+    ngx_command_t        *commands;	//命令定义地址 模块的指令集 每一个指令在源码中对应着一个ngx_command_t
+    					//结构变量 将处理nginx.conf中的配置项
 
-    ngx_int_t           (*init_module)(ngx_cycle_t *cycle);
+    ngx_uint_t            type;		//标示该模块的类型，和ctx是紧密相关的。它的取值范围是以下几种:
+    					//NGX_HTTP_MODULE,NGX_CORE_MODULE,NGX_CONF_MODULE,
+    					//NGX_EVENT_MODULE,NGX_MAIL_MODULE
 
-    ngx_int_t           (*init_process)(ngx_cycle_t *cycle);
-    ngx_int_t           (*init_thread)(ngx_cycle_t *cycle);
-    void                (*exit_thread)(ngx_cycle_t *cycle);
-    void                (*exit_process)(ngx_cycle_t *cycle);
+    //下面7个函数是nginx在启动，停止过程中的7个执行点 如果不需要在这个点做任何操作，可以置为NULL
+    ngx_int_t           (*init_master)(ngx_log_t *log);		//初始化master
+    ngx_int_t           (*init_module)(ngx_cycle_t *cycle);	//初始化模块
+    ngx_int_t           (*init_process)(ngx_cycle_t *cycle);	//初始化进程
+    ngx_int_t           (*init_thread)(ngx_cycle_t *cycle);	//初始化线程
+    void                (*exit_thread)(ngx_cycle_t *cycle);	//退出线程
+    void                (*exit_process)(ngx_cycle_t *cycle);	//退出进程
+    void                (*exit_master)(ngx_cycle_t *cycle);	//退出master
 
-    void                (*exit_master)(ngx_cycle_t *cycle);
-
+    //保留字段，无用，可以使用NGX_MODULE_V1_PADDING来替换
     uintptr_t             spare_hook0;
     uintptr_t             spare_hook1;
     uintptr_t             spare_hook2;
