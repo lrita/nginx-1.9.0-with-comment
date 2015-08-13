@@ -114,6 +114,7 @@ typedef struct {
 } ngx_http_listen_opt_t;
 
 
+//这个结构是定义了HTTP模块处理用户请求的11个阶段
 typedef enum {
     NGX_HTTP_POST_READ_PHASE = 0,	//在接收到完整的HTTP头部后处理的HTTP阶段
 
@@ -153,6 +154,7 @@ typedef enum {
 
 typedef struct ngx_http_phase_handler_s  ngx_http_phase_handler_t;
 
+// 一个HTTP处理阶段中的checker检查方法，仅可以由HTTP框架实现，以此控制HTTP请求的处理流程
 typedef ngx_int_t (*ngx_http_phase_handler_pt)(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph);
 
