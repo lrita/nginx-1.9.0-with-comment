@@ -940,7 +940,10 @@ ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
 
 
 char *
-ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)	//如果nginx.conf文件中某个配置项的参
+						//数是on或者off，而且在Nginx模块的代码中使用ngx_flag_t变量来
+						//保存这个配置项的参数，就可以将set回调方法设为ngx_conf_set_flag_slot
+						//当配置项参数为on时ngx_flag_t变量为1，反之为0
 {
     char  *p = conf;
 
@@ -981,6 +984,8 @@ ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//如果配置项后的参数只有1个，同时在代码中我们希望用ngx_str_t类型的变量来保存这个配置项的参数，
+	//则可以使用ngx_conf_set_str_slot
 {
     char  *p = conf;
 
@@ -1008,6 +1013,8 @@ ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_str_array_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//如果一个配置项会出现多次，每次后面都跟着一个参数，而在程序中我们希望用一个ngx_array_t数组来储存所有
+	//同名配置项的参数，而且数组中每个元素都是ngx_str_t类型，那么可以使用ngx_conf_set_str_array_slot。
 {
     char  *p = conf;
 
@@ -1044,6 +1051,8 @@ ngx_conf_set_str_array_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_keyval_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//与ngx_conf_set_str_array_slot类似，也是用一个ngx_array_t来存储所有同名配置项的的参数，只不过这个配置
+	//项的参数必须是2个，数组中每个元素都是一个key／value对
 {
     char  *p = conf;
 
@@ -1082,6 +1091,7 @@ ngx_conf_set_keyval_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//配置项后必须跟一个参数，而且必须是数字，存储这个变量的类型是int
 {
     char  *p = conf;
 
@@ -1113,6 +1123,7 @@ ngx_conf_set_num_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//配置项后必须跟1个参数，表示空间大小，可以是一个数字(单位为byte)，或者是数字后面跟着K、M
 {
     char  *p = conf;
 
@@ -1144,6 +1155,7 @@ ngx_conf_set_size_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_off_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//配置想必须跟一个参数，表示空间的偏移量。可以是数字，也可以是数字带单位K、M、G
 {
     char  *p = conf;
 
@@ -1175,6 +1187,7 @@ ngx_conf_set_off_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//配置项后必须跟一个参数，表示时间，可以是数字(单位是ms)，也可以是数字带单位s、m、h、d、y
 {
     char  *p = conf;
 
@@ -1206,6 +1219,7 @@ ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//跟ngx_conf_set_msec_slot一样，只不过默认单位是s
 {
     char  *p = conf;
 
@@ -1237,6 +1251,8 @@ ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//配置项后面必须带1个或者2个参数，第一个参数是数字，第二个参数是空间大小，如gzip_buffers 4 8k
+	//ngx_conf_set_bufs_slot会把这2个参数转化为ngx_bufs_t下的2个成员
 {
     char *p = conf;
 
@@ -1267,6 +1283,8 @@ ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//配置项后面必须跟1个参数，其取值范围必须是我们设定好的一个集合。首先，我们必须用ngx_conf_enum_t结构
+	//定义配置项的取值范围，并且为每个值设置一个序号，然后ngx_conf_set_enum_slot会把对应的值转为对应的序号
 {
     char  *p = conf;
 
@@ -1304,6 +1322,7 @@ ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//把参数转化为bitmask
 {
     char  *p = conf;
 

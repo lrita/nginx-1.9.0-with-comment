@@ -328,6 +328,7 @@ ngx_next_temp_number(ngx_uint_t collision)
 
 char *
 ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//配置项后必须跟1个参数，表示路径
 {
     char  *p = conf;
 
@@ -428,6 +429,7 @@ ngx_conf_merge_path_value(ngx_conf_t *cf, ngx_path_t **path, ngx_path_t *prev,
 
 char *
 ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+	//设置目录或者文件的读写权限，配置项后可以携带1-3个参数，例如user:rw gr:rw all:rw
 {
     char  *confp = conf;
 
