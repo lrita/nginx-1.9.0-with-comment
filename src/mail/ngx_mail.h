@@ -356,8 +356,8 @@ typedef struct {
 
 #define NGX_MAIL_MODULE         0x4C49414D     /* "MAIL" */
 
-#define NGX_MAIL_MAIN_CONF      0x02000000
-#define NGX_MAIL_SRV_CONF       0x04000000
+#define NGX_MAIL_MAIN_CONF      0x02000000	//配置可以出现在mail{}块或imap{}块中
+#define NGX_MAIL_SRV_CONF       0x04000000	//配置可以出现在mail{}块或者imap{}块中的server{}块内
 
 
 #define NGX_MAIL_MAIN_CONF_OFFSET  offsetof(ngx_mail_conf_ctx_t, main_conf)
