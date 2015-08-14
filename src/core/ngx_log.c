@@ -103,7 +103,7 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     const char *fmt, va_list args)
 
 #endif
-{
+{	//ngx_log_error实现函数
 #if (NGX_HAVE_VARIADIC_MACROS)
     va_list      args;
 #endif
@@ -211,7 +211,7 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
 
 #if !(NGX_HAVE_VARIADIC_MACROS)
-
+//如果不支持可变参数宏，则使用以下函数
 void ngx_cdecl
 ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     const char *fmt, ...)
@@ -256,7 +256,7 @@ ngx_log_abort(ngx_err_t err, const char *fmt, ...)
 
 
 void ngx_cdecl
-ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
+ngx_log_stderr(ngx_err_t err, const char *fmt, ...)	//向console输出文字，如果err>0则附加对应的错误信息
 {
     u_char   *p, *last;
     va_list   args;
@@ -278,7 +278,7 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
         p = last - NGX_LINEFEED_SIZE;
     }
 
-    ngx_linefeed(p);
+    ngx_linefeed(p);		//加'\n'刷行缓冲
 
     (void) ngx_write_console(ngx_stderr, errstr, p - errstr);
 }
@@ -315,7 +315,8 @@ ngx_log_errno(u_char *buf, u_char *last, ngx_err_t err)
 
 
 ngx_log_t *
-ngx_log_init(u_char *prefix)
+ngx_log_init(u_char *prefix)	//初始化过程中会初始化一个log handle用于输出，这个handle默认的文件为编译时生成的参数。
+				//在解析nginx.conf后会重新生成一个新的log handle来代替这个函数生成的log handler
 {
     u_char  *p, *name;
     size_t   nlen, plen;
@@ -323,7 +324,7 @@ ngx_log_init(u_char *prefix)
     ngx_log.file = &ngx_log_file;
     ngx_log.log_level = NGX_LOG_NOTICE;
 
-    name = (u_char *) NGX_ERROR_LOG_PATH;
+    name = (u_char *) NGX_ERROR_LOG_PATH;//设置nginx_errlog的path，这个宏在ngx_auto_config.h中有定义logs/error.log
 
     /*
      * we use ngx_strlen() here since BCC warns about
@@ -345,7 +346,7 @@ ngx_log_init(u_char *prefix)
     if (name[0] != '/') {
 #endif
 
-        if (prefix) {
+        if (prefix) {	//检查编译的时候是否有prefix，如果有prefix就将log路径串起来
             plen = ngx_strlen(prefix);
 
         } else {
@@ -357,6 +358,7 @@ ngx_log_init(u_char *prefix)
 #endif
         }
 
+	// 检查是否有路径前缀，如有就加到前面，使用绝对路径上的日志文件，如果没有，使用当前目录下的日志文件
         if (plen) {
             name = malloc(plen + nlen + 2);
             if (name == NULL) {
@@ -542,7 +544,7 @@ ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log)
 
 
 static char *
-ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)//保存配置项error_log参数的回调
 {
     ngx_log_t  *dummy;
 
@@ -564,28 +566,28 @@ ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
 
     } else {
 
-        new_log = ngx_pcalloc(cf->pool, sizeof(ngx_log_t));
+        new_log = ngx_pcalloc(cf->pool, sizeof(ngx_log_t));	//生成整个Nginx进程使用的error_log handler
         if (new_log == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        if (*head == NULL) {
+        if (*head == NULL) {					//该函数第一次执行时＊head为NULL
             *head = new_log;
         }
     }
 
     value = cf->args->elts;
 
-    if (ngx_strcmp(value[1].data, "stderr") == 0) {
+    if (ngx_strcmp(value[1].data, "stderr") == 0) {		//参数为strerr时
         ngx_str_null(&name);
         cf->cycle->log_use_stderr = 1;
 
-        new_log->file = ngx_conf_open_file(cf->cycle, &name);
+        new_log->file = ngx_conf_open_file(cf->cycle, &name);	//将file结构提数据初始化为strerr相关
         if (new_log->file == NULL) {
             return NGX_CONF_ERROR;
         }
 
-     } else if (ngx_strncmp(value[1].data, "memory:", 7) == 0) {
+     } else if (ngx_strncmp(value[1].data, "memory:", 7) == 0) {//参数为memory时
 
 #if (NGX_DEBUG)
         size_t                 size, needed;
@@ -609,7 +611,7 @@ ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
             return NGX_CONF_ERROR;
         }
 
-        buf = ngx_palloc(cf->pool, sizeof(ngx_log_memory_buf_t));
+        buf = ngx_palloc(cf->pool, sizeof(ngx_log_memory_buf_t));//分配内存buf结构体
         if (buf == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -627,7 +629,7 @@ ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
 
         ngx_memset(buf->pos, ' ', buf->end - buf->pos);
 
-        cln = ngx_pool_cleanup_add(cf->pool, 0);
+        cln = ngx_pool_cleanup_add(cf->pool, 0);		//log内存释放时清理内存buffer
         if (cln == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -644,7 +646,7 @@ ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
         return NGX_CONF_ERROR;
 #endif
 
-     } else if (ngx_strncmp(value[1].data, "syslog:", 7) == 0) {
+     } else if (ngx_strncmp(value[1].data, "syslog:", 7) == 0) {//参数为syslog时
         peer = ngx_pcalloc(cf->pool, sizeof(ngx_syslog_peer_t));
         if (peer == NULL) {
             return NGX_CONF_ERROR;
@@ -657,19 +659,19 @@ ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
         new_log->writer = ngx_syslog_writer;
         new_log->wdata = peer;
 
-    } else {
+    } else {							//参数为文件路径时，打开相关文件
         new_log->file = ngx_conf_open_file(cf->cycle, &value[1]);
         if (new_log->file == NULL) {
             return NGX_CONF_ERROR;
         }
     }
 
-    if (ngx_log_set_levels(cf, new_log) != NGX_CONF_OK) {
+    if (ngx_log_set_levels(cf, new_log) != NGX_CONF_OK) {	//设置log输出等级
         return NGX_CONF_ERROR;
     }
 
     if (*head != new_log) {
-        ngx_log_insert(*head, new_log);
+        ngx_log_insert(*head, new_log);				//将生成的log handle加入配置中
     }
 
     return NGX_CONF_OK;
@@ -715,6 +717,7 @@ ngx_log_insert(ngx_log_t *log, ngx_log_t *new_log)
 static void
 ngx_log_memory_writer(ngx_log_t *log, ngx_uint_t level, u_char *buf,
     size_t len)
+	//内存BUFFER写方法
 {
     u_char                *p;
     size_t                 avail, written;
@@ -743,7 +746,7 @@ ngx_log_memory_writer(ngx_log_t *log, ngx_uint_t level, u_char *buf,
 
 
 static void
-ngx_log_memory_cleanup(void *data)
+ngx_log_memory_cleanup(void *data)		//log memery buf clean up handler
 {
     ngx_log_t *log = data;
 

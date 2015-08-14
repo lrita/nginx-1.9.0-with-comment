@@ -50,16 +50,16 @@ typedef void (*ngx_log_writer_pt) (ngx_log_t *log, ngx_uint_t level,
 
 struct ngx_log_s {
     ngx_uint_t           log_level;
-    ngx_open_file_t     *file;
+    ngx_open_file_t     *file;//fd
 
     ngx_atomic_uint_t    connection;
 
     time_t               disk_full_time;
 
-    ngx_log_handler_pt   handler;
+    ngx_log_handler_pt   handler;	//非NGX_LOG_DEBUG情况下输出log时的回调，写log的同时执行某项操作。
     void                *data;
 
-    ngx_log_writer_pt    writer;
+    ngx_log_writer_pt    writer;	//输出log时的写回调，可以实现向内存写或者想syslog写，如果存在writer，就不会向file中写了
     void                *wdata;
 
     /*
@@ -81,7 +81,7 @@ struct ngx_log_s {
 
 #if (NGX_HAVE_C99_VARIADIC_MACROS)
 
-#define NGX_HAVE_VARIADIC_MACROS  1
+#define NGX_HAVE_VARIADIC_MACROS  1	//支持可变参数宏
 
 #define ngx_log_error(level, log, ...)                                        \
     if ((log)->log_level >= level) ngx_log_error_core(level, log, __VA_ARGS__)
@@ -97,7 +97,7 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
 #elif (NGX_HAVE_GCC_VARIADIC_MACROS)
 
-#define NGX_HAVE_VARIADIC_MACROS  1
+#define NGX_HAVE_VARIADIC_MACROS  1	//支持可变参数宏
 
 #define ngx_log_error(level, log, args...)                                    \
     if ((log)->log_level >= level) ngx_log_error_core(level, log, args)
@@ -113,7 +113,7 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
 #else /* NO VARIADIC MACROS */
 
-#define NGX_HAVE_VARIADIC_MACROS  0
+#define NGX_HAVE_VARIADIC_MACROS  0	//不支持可变参数宏
 
 void ngx_cdecl ngx_log_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     const char *fmt, ...);
