@@ -49,15 +49,15 @@ typedef void (*ngx_log_writer_pt) (ngx_log_t *log, ngx_uint_t level,
 
 
 struct ngx_log_s {
-    ngx_uint_t           log_level;
-    ngx_open_file_t     *file;//fd
+    ngx_uint_t           log_level;	//日志级别
+    ngx_open_file_t     *file;		//日志文件
 
-    ngx_atomic_uint_t    connection;
+    ngx_atomic_uint_t    connection;	//连接数，不为0时会输出到日志中
 
     time_t               disk_full_time;
 
     ngx_log_handler_pt   handler;	//非NGX_LOG_DEBUG情况下输出log时的回调，写log的同时执行某项操作。
-    void                *data;
+    void                *data;		//每个模块可以自定义data的使用方法。通常data都是实现上面的handler后才使用。
 
     ngx_log_writer_pt    writer;	//输出log时的写回调，可以实现向内存写或者想syslog写，如果存在writer，就不会向file中写了
     void                *wdata;
@@ -68,7 +68,7 @@ struct ngx_log_s {
      * their types all the time
      */
 
-    char                *action;
+    char                *action;	//表示当前正在执行的动作，可以在实现上面的handler后配合使用，否则无意义
 
     ngx_log_t           *next;
 };
