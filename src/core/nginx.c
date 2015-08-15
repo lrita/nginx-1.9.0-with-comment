@@ -181,13 +181,13 @@ main(int argc, char *const *argv)
     ngx_cycle_t      *cycle, init_cycle;
     ngx_core_conf_t  *ccf;
 
-    ngx_debug_init();
+    ngx_debug_init();	//debug模块初始化 linux下为空函数
 
     if (ngx_strerror_init() != NGX_OK) {
         return 1;
     }
 
-    if (ngx_get_options(argc, argv) != NGX_OK) {
+    if (ngx_get_options(argc, argv) != NGX_OK) {//解析各个参数，设置好各个配置的全局变量
         return 1;
     }
 
@@ -256,15 +256,15 @@ main(int argc, char *const *argv)
 
     /* TODO */ ngx_max_sockets = -1;
 
-    ngx_time_init();
+    ngx_time_init();//初始化time字符串模块
 
 #if (NGX_PCRE)
-    ngx_regex_init();
+    ngx_regex_init();//正则模块初始化 rewrite模块等依赖此，PCRE库
 #endif
 
     ngx_pid = ngx_getpid();
 
-    log = ngx_log_init(ngx_prefix);
+    log = ngx_log_init(ngx_prefix);//初始化日志handle
     if (log == NULL) {
         return 1;
     }
@@ -283,20 +283,20 @@ main(int argc, char *const *argv)
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
 
-    init_cycle.pool = ngx_create_pool(1024, log);
+    init_cycle.pool = ngx_create_pool(1024, log);	//创建cycle的内存池
     if (init_cycle.pool == NULL) {
         return 1;
     }
 
-    if (ngx_save_argv(&init_cycle, argc, argv) != NGX_OK) {
+    if (ngx_save_argv(&init_cycle, argc, argv) != NGX_OK) {//保存系统参数，跟设置进程名称有关
         return 1;
     }
 
-    if (ngx_process_options(&init_cycle) != NGX_OK) {
+    if (ngx_process_options(&init_cycle) != NGX_OK) {	//设置配置文件相关
         return 1;
     }
 
-    if (ngx_os_init(log) != NGX_OK) {
+    if (ngx_os_init(log) != NGX_OK) {			//获取与OS相关的一些设置
         return 1;
     }
 
@@ -304,17 +304,18 @@ main(int argc, char *const *argv)
      * ngx_crc32_table_init() requires ngx_cacheline_size set in ngx_os_init()
      */
 
-    if (ngx_crc32_table_init() != NGX_OK) {
+    if (ngx_crc32_table_init() != NGX_OK) {		//初始化crc32表
         return 1;
     }
 
-    if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
+    if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {	//查看环境变量，看nginx是否处于升级状态，如果
+	    							//在升级状态则继承之前的socket
         return 1;
     }
 
     ngx_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {
-        ngx_modules[i]->index = ngx_max_module++;
+        ngx_modules[i]->index = ngx_max_module++;		//获得模块数量，并且设置每个模块的index
     }
 
     cycle = ngx_init_cycle(&init_cycle);
@@ -405,7 +406,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
     ngx_int_t         s;
     ngx_listening_t  *ls;
 
-    inherited = (u_char *) getenv(NGINX_VAR);
+    inherited = (u_char *) getenv(NGINX_VAR);//查看是否有设置NGINX这个环境变量 如NGINX="16000:16500:16600;"
 
     if (inherited == NULL) {
         return NGX_OK;
@@ -447,7 +448,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 
     ngx_inherited = 1;
 
-    return ngx_set_inherited_sockets(cycle);
+    return ngx_set_inherited_sockets(cycle);	//设置解析好的listening数组
 }
 
 
@@ -657,7 +658,7 @@ ngx_get_options(int argc, char *const *argv)
     u_char     *p;
     ngx_int_t   i;
 
-    for (i = 1; i < argc; i++) {
+    for (i = 1; i < argc; i++) {		//类似getopt函数
 
         p = (u_char *) argv[i];
 
@@ -672,7 +673,7 @@ ngx_get_options(int argc, char *const *argv)
 
             case '?':
             case 'h':
-                ngx_show_version = 1;
+                ngx_show_version = 1;		//相关配置选项都是全局变量
                 ngx_show_help = 1;
                 break;
 
@@ -775,7 +776,7 @@ ngx_get_options(int argc, char *const *argv)
 
 
 static ngx_int_t
-ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
+ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)	//保存系统参数，跟设置进程名称有关
 {
 #if (NGX_FREEBSD)
 
@@ -817,7 +818,7 @@ ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 
 
 static ngx_int_t
-ngx_process_options(ngx_cycle_t *cycle)
+ngx_process_options(ngx_cycle_t *cycle)//设置配置路径相关
 {
     u_char  *p;
     size_t   len;
@@ -956,7 +957,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
 
 
 static char *
-ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
+ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)//初始化core_module配置默认参数
 {
     ngx_core_conf_t  *ccf = conf;
 
@@ -1083,7 +1084,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 
 static char *
-ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)//解析用户参数
 {
 #if (NGX_WIN32)
 
@@ -1146,7 +1147,7 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_set_env(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_set_env(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)//解析env参数
 {
     ngx_core_conf_t  *ccf = conf;
 
@@ -1176,7 +1177,7 @@ ngx_set_env(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)//解析worker进程优先级参数
 {
     ngx_core_conf_t  *ccf = conf;
 
@@ -1216,7 +1217,7 @@ ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)//解析CPU亲和行参数
 {
 #if (NGX_HAVE_CPU_AFFINITY)
     ngx_core_conf_t  *ccf = conf;
@@ -1308,7 +1309,7 @@ ngx_get_cpu_affinity(ngx_uint_t n)
 
 
 static char *
-ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)	//解析worker进程数量
 {
     ngx_str_t        *value;
     ngx_core_conf_t  *ccf;
