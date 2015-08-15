@@ -31,8 +31,9 @@ extern char **environ;
 
 static char *ngx_os_argv_last;
 
+//机制参见：http://blog.csdn.net/hengshan/article/details/7835981
 ngx_int_t
-ngx_init_setproctitle(ngx_log_t *log)
+ngx_init_setproctitle(ngx_log_t *log)	//保存环境变量，跟设置进程名有关
 {
     u_char      *p;
     size_t       size;
@@ -76,7 +77,7 @@ ngx_init_setproctitle(ngx_log_t *log)
 
 
 void
-ngx_setproctitle(char *title)
+ngx_setproctitle(char *title)	//设置进程名称
 {
     u_char     *p;
 
