@@ -35,23 +35,23 @@ ngx_os_init(ngx_log_t *log)
     ngx_uint_t  n;
 
 #if (NGX_HAVE_OS_SPECIFIC_INIT)
-    if (ngx_os_specific_init(log) != NGX_OK) {
+    if (ngx_os_specific_init(log) != NGX_OK) {	//获取系统版本等信息
         return NGX_ERROR;
     }
 #endif
 
-    if (ngx_init_setproctitle(log) != NGX_OK) {
+    if (ngx_init_setproctitle(log) != NGX_OK) {	//保存环境变量，跟设置进程名有关
         return NGX_ERROR;
     }
 
-    ngx_pagesize = getpagesize();
-    ngx_cacheline_size = NGX_CPU_CACHE_LINE;
+    ngx_pagesize = getpagesize();		//获取系统内粗pagesize
+    ngx_cacheline_size = NGX_CPU_CACHE_LINE;	//获取cacheline size
 
     for (n = ngx_pagesize; n >>= 1; ngx_pagesize_shift++) { /* void */ }
 
 #if (NGX_HAVE_SC_NPROCESSORS_ONLN)
     if (ngx_ncpu == 0) {
-        ngx_ncpu = sysconf(_SC_NPROCESSORS_ONLN);
+        ngx_ncpu = sysconf(_SC_NPROCESSORS_ONLN);//获取CPU核数
     }
 #endif
 
@@ -59,7 +59,7 @@ ngx_os_init(ngx_log_t *log)
         ngx_ncpu = 1;
     }
 
-    ngx_cpuinfo();
+    ngx_cpuinfo();					//获取CPU类型，根据CPU类型设置ngx_cacheline_size
 
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
@@ -67,7 +67,7 @@ ngx_os_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    ngx_max_sockets = (ngx_int_t) rlmt.rlim_cur;
+    ngx_max_sockets = (ngx_int_t) rlmt.rlim_cur;	//获取当前系统设置每个进程能打开文件的个数
 
 #if (NGX_HAVE_INHERITED_NONBLOCK || NGX_HAVE_ACCEPT4)
     ngx_inherited_nonblocking = 1;
@@ -75,7 +75,7 @@ ngx_os_init(ngx_log_t *log)
     ngx_inherited_nonblocking = 0;
 #endif
 
-    srandom(ngx_time());
+    srandom(ngx_time());				//初始化随机数
 
     return NGX_OK;
 }
