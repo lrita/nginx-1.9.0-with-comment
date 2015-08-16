@@ -290,7 +290,7 @@ ngx_init_signals(ngx_log_t *log)
         ngx_memzero(&sa, sizeof(struct sigaction));
         sa.sa_handler = sig->handler;
         sigemptyset(&sa.sa_mask);
-        if (sigaction(sig->signo, &sa, NULL) == -1) {
+        if (sigaction(sig->signo, &sa, NULL) == -1) {	//初始化每个信号对应的handler
 #if (NGX_VALGRIND)
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                           "sigaction(%s) failed, ignored", sig->signame);
@@ -305,7 +305,11 @@ ngx_init_signals(ngx_log_t *log)
     return NGX_OK;
 }
 
-
+//就目前nginx代码来看，子进程并没有往父进程发送任何消息，子进程之间也没有相互通信的逻辑，也许是因为nginx有其它
+//一些更好的进程通信方式，比如共享内存等，所以这种channel通信目前仅做为父进程往子进程发送消息使用，但由于有这个
+//基础在这，如果未来要使用channel做这样的事情，的确是可以的。
+//在nginx中，worker和master的交互，是通过流管道以及信号。
+//而master与外部的交互是通过信号来进行的,这个函数就是master处理信号的程序。
 void
 ngx_signal_handler(int signo)
 {
@@ -324,7 +328,7 @@ ngx_signal_handler(int signo)
         }
     }
 
-    ngx_time_sigsafe_update();
+    ngx_time_sigsafe_update();				//更新当前时间
 
     action = "";
 
@@ -334,35 +338,35 @@ ngx_signal_handler(int signo)
     case NGX_PROCESS_SINGLE:
         switch (signo) {
 
-        case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
+        case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):	//quit信号
             ngx_quit = 1;
             action = ", shutting down";
             break;
 
-        case ngx_signal_value(NGX_TERMINATE_SIGNAL):
+        case ngx_signal_value(NGX_TERMINATE_SIGNAL):	//终止信号
         case SIGINT:
             ngx_terminate = 1;
             action = ", exiting";
             break;
 
-        case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
+        case ngx_signal_value(NGX_NOACCEPT_SIGNAL):	//winch信号，停止接受accept
             if (ngx_daemonized) {
                 ngx_noaccept = 1;
                 action = ", stop accepting connections";
             }
             break;
 
-        case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
+        case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):	//sighup信号用来reconfig
             ngx_reconfigure = 1;
             action = ", reconfiguring";
             break;
 
-        case ngx_signal_value(NGX_REOPEN_SIGNAL):
+        case ngx_signal_value(NGX_REOPEN_SIGNAL):	//用户信号，用来reopen
             ngx_reopen = 1;
             action = ", reopening logs";
             break;
 
-        case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
+        case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):	//热代码替换
             if (getppid() > 1 || ngx_new_binary > 0) {
 
                 /*
@@ -371,12 +375,19 @@ ngx_signal_handler(int signo)
                  * is still running.  Or ignore the signal in the old binary's
                  * process if the new binary's process is already running.
                  */
+		//这里给出了详细的注释，更通俗一点来讲，就是说，进程现在是一个master(新的master进程)，但是当他
+		//的父进程old master还在运行的话，这时收到了USR2信号，我们就忽略它，不然就成了新master里又要生
+		//成master。。。另外一种情况就是，old master已经开始了生成新master的过程中，这时如果又有USR2信
+		//号到来，那么也要忽略掉.
+		//参考文档：http://blog.csdn.net/dingyujie/article/details/7192144
 
                 action = ", ignoring";
                 ignore = 1;
                 break;
             }
 
+	    // 最重要的操作在这里，通过将ngx_change_binary置为1，来告诉master应该去启动一个新的实例了，也就是说，
+	    //master里面在检测到这个变量为1时，就会做新nginx实例的生成工作了
             ngx_change_binary = 1;
             action = ", changing binary";
             break;
@@ -442,7 +453,7 @@ ngx_signal_handler(int signo)
     }
 
     if (signo == SIGCHLD) {
-        ngx_process_get_status();
+        ngx_process_get_status();//最终如果信号是sigchld，我们收割僵尸进程(用waitpid)
     }
 
     ngx_set_errno(err);
@@ -617,7 +628,7 @@ ngx_os_signal_process(ngx_cycle_t *cycle, char *name, ngx_int_t pid)
 
     for (sig = signals; sig->signo != 0; sig++) {
         if (ngx_strcmp(name, sig->name) == 0) {
-            if (kill(pid, sig->signo) != -1) {
+            if (kill(pid, sig->signo) != -1) {	//给pid进程发送设置的信号
                 return 0;
             }
 
