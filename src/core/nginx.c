@@ -318,7 +318,7 @@ main(int argc, char *const *argv)
         ngx_modules[i]->index = ngx_max_module++;		//获得模块数量，并且设置每个模块的index
     }
 
-    cycle = ngx_init_cycle(&init_cycle);
+    cycle = ngx_init_cycle(&init_cycle);			//对ngx_cycle结构进行初始化,这里是启动核心之处
     if (cycle == NULL) {
         if (ngx_test_config) {
             ngx_log_stderr(0, "configuration file %s test failed",
@@ -337,7 +337,7 @@ main(int argc, char *const *argv)
         return 0;
     }
 
-    if (ngx_signal) {
+    if (ngx_signal) {	//如果有设置信号处理，进入ngx_signal_process
         return ngx_signal_process(cycle, ngx_signal);
     }
 
@@ -348,17 +348,17 @@ main(int argc, char *const *argv)
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (ccf->master && ngx_process == NGX_PROCESS_SINGLE) {
-        ngx_process = NGX_PROCESS_MASTER;
+        ngx_process = NGX_PROCESS_MASTER;	//获得进程类型
     }
 
 #if !(NGX_WIN32)
 
-    if (ngx_init_signals(cycle->log) != NGX_OK) {
-        return 1;
+    if (ngx_init_signals(cycle->log) != NGX_OK) {//绑定各个singal对应的处理函数，信号处理函数会根据对应的信号
+        return 1;				 //设置对应的全局变量
     }
 
     if (!ngx_inherited && ccf->daemon) {
-        if (ngx_daemon(cycle->log) != NGX_OK) {
+        if (ngx_daemon(cycle->log) != NGX_OK) {	//变成守护进程
             return 1;
         }
 
@@ -371,7 +371,7 @@ main(int argc, char *const *argv)
 
 #endif
 
-    if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
+    if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {	//打开pidfile写入主进程的pid
         return 1;
     }
 
@@ -389,10 +389,10 @@ main(int argc, char *const *argv)
     ngx_use_stderr = 0;
 
     if (ngx_process == NGX_PROCESS_SINGLE) {
-        ngx_single_process_cycle(cycle);
+        ngx_single_process_cycle(cycle);	//单进程模式
 
     } else {
-        ngx_master_process_cycle(cycle);
+        ngx_master_process_cycle(cycle);	//多进程模式
     }
 
     return 0;
@@ -958,8 +958,8 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
 
 static char *
 ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)//初始化core_module配置默认参数
-{
-    ngx_core_conf_t  *ccf = conf;
+{							//这个函数在解析配置文件之后被调用，该函数只是将配置文
+    ngx_core_conf_t  *ccf = conf;			//件中没有的配置设置为默认项
 
     ngx_conf_init_value(ccf->daemon, 1);
     ngx_conf_init_value(ccf->master, 1);
@@ -1004,35 +1004,35 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)//初始化core_module�
 
 #if !(NGX_WIN32)
 
-    if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) {
+    if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) {	//如果运行进程用户为root
         struct group   *grp;
         struct passwd  *pwd;
 
         ngx_set_errno(0);
-        pwd = getpwnam(NGX_USER);
-        if (pwd == NULL) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+        pwd = getpwnam(NGX_USER);					//获得nginx用户信息
+        if (pwd == NULL) {						//如果编译时没有指定NGX_USER那么
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,		//NGX_USER默认为"nobody"
                           "getpwnam(\"" NGX_USER "\") failed");
             return NGX_CONF_ERROR;
         }
 
         ccf->username = NGX_USER;
-        ccf->user = pwd->pw_uid;
+        ccf->user = pwd->pw_uid;					//获得uid
 
         ngx_set_errno(0);
-        grp = getgrnam(NGX_GROUP);
+        grp = getgrnam(NGX_GROUP);					//获得nginx组信息
         if (grp == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "getgrnam(\"" NGX_GROUP "\") failed");
             return NGX_CONF_ERROR;
         }
 
-        ccf->group = grp->gr_gid;
+        ccf->group = grp->gr_gid;					//获得gid
     }
 
 
     if (ccf->lock_file.len == 0) {
-        ngx_str_set(&ccf->lock_file, NGX_LOCK_PATH);
+        ngx_str_set(&ccf->lock_file, NGX_LOCK_PATH);//如果编译时没有指定NGX_LOCK_PATH，那么默认为"logs/nginx.lock"
     }
 
     if (ngx_conf_full_name(cycle, &ccf->lock_file, 0) != NGX_OK) {

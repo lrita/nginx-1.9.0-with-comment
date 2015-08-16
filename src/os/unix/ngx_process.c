@@ -89,13 +89,14 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
 {
     u_long     on;
     ngx_pid_t  pid;
-    ngx_int_t  s;
+    ngx_int_t  s;	//将要创建的子进程在进程表中的位置
 
     if (respawn >= 0) {
-        s = respawn;
+        s = respawn;	//替换进程ngx_processes[respawn],可安全重用该进程表项
 
     } else {
-        for (s = 0; s < ngx_last_process; s++) {
+        for (s = 0; s < ngx_last_process; s++) {//遍历ngx_processess，从而找到空闲的slot，从而等会fork完毕后,将
+						//子进程信息放入全局进程信息表的相应的slot
             if (ngx_processes[s].pid == -1) {
                 break;
             }
@@ -110,11 +111,12 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     }
 
 
-    if (respawn != NGX_PROCESS_DETACHED) {
+    if (respawn != NGX_PROCESS_DETACHED) {//如果类型为NGX_PROCESS_DETACHED，则说明是热代码替换(热代码替换也是通
+	    				  //过这个函数进行处理的)，因此不需要新建socketpair
 
         /* Solaris 9 still has no AF_LOCAL */
 
-        if (socketpair(AF_UNIX, SOCK_STREAM, 0, ngx_processes[s].channel) == -1)
+        if (socketpair(AF_UNIX, SOCK_STREAM, 0, ngx_processes[s].channel) == -1)//创建与子进程通信的链接
         {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "socketpair() failed while spawning \"%s\"", name);
@@ -183,7 +185,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     ngx_process_slot = s;
 
 
-    pid = fork();
+    pid = fork();						//创建子进程
 
     switch (pid) {
 
@@ -204,10 +206,11 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start %s %P", name, pid);
 
+    //设置一些进程表项字段
     ngx_processes[s].pid = pid;
     ngx_processes[s].exited = 0;
 
-    if (respawn >= 0) {
+    if (respawn >= 0) {	//如果是重复创建，即为替换进程，不用设置其他进程表字段，直接返回。
         return pid;
     }
 
