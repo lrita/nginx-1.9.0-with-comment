@@ -170,10 +170,10 @@ struct ngx_module_s {
 
 
 typedef struct {
-    ngx_str_t             name;
-    void               *(*create_conf)(ngx_cycle_t *cycle);
-    char               *(*init_conf)(ngx_cycle_t *cycle, void *conf);
-} ngx_core_module_t;
+    ngx_str_t             name;						//核心模块名称
+    void               *(*create_conf)(ngx_cycle_t *cycle);		//解析配置前创建conf
+    char               *(*init_conf)(ngx_cycle_t *cycle, void *conf);	//解析配置后调用init
+} ngx_core_module_t;	//核心模块的ngx_module_t中ctx指向的上下文
 
 
 typedef struct {
@@ -188,21 +188,21 @@ typedef char *(*ngx_conf_handler_pt)(ngx_conf_t *cf,
 
 
 struct ngx_conf_s {
-    char                 *name;
-    ngx_array_t          *args;
+    char                 *name;		//没有使用
+    ngx_array_t          *args;		//指令的参数
 
-    ngx_cycle_t          *cycle;
-    ngx_pool_t           *pool;
-    ngx_pool_t           *temp_pool;
-    ngx_conf_file_t      *conf_file;
-    ngx_log_t            *log;
+    ngx_cycle_t          *cycle;	//指向系统参数，在系统整个运行过程中，需要使用的一些参数、资源需要统一的管理
+    ngx_pool_t           *pool;		//内存池
+    ngx_pool_t           *temp_pool;	//分配临时数据空间的内存池
+    ngx_conf_file_t      *conf_file;	//配置文件的信息
+    ngx_log_t            *log;		//日志handler
 
-    void                 *ctx;
-    ngx_uint_t            module_type;
-    ngx_uint_t            cmd_type;
+    void                 *ctx;		//模块的配置信息
+    ngx_uint_t            module_type;	//当前指令的类型
+    ngx_uint_t            cmd_type;	//命令的类型
 
-    ngx_conf_handler_pt   handler;
-    char                 *handler_conf;
+    ngx_conf_handler_pt   handler;	//指令处理函数，有自己行为的在这里实现
+    char                 *handler_conf;	//指令处理函数的配置信息
 };
 
 
@@ -276,16 +276,20 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
         conf = default;                                                      \
     }
 
+//使用此宏需要在create_xxx_conf函数创建config结构提时，将值初始化为NGX_CONF_UNSET
+//合并可以使用=赋值的参数
 #define ngx_conf_merge_value(conf, prev, default)                            \
     if (conf == NGX_CONF_UNSET) {                                            \
         conf = (prev == NGX_CONF_UNSET) ? default : prev;                    \
     }
 
+//合并可以使用指针类型的参数
 #define ngx_conf_merge_ptr_value(conf, prev, default)                        \
     if (conf == NGX_CONF_UNSET_PTR) {                                        \
         conf = (prev == NGX_CONF_UNSET_PTR) ? default : prev;                \
     }
 
+//合并可以使用uint类型的参数
 #define ngx_conf_merge_uint_value(conf, prev, default)                       \
     if (conf == NGX_CONF_UNSET_UINT) {                                       \
         conf = (prev == NGX_CONF_UNSET_UINT) ? default : prev;               \
@@ -311,6 +315,8 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
         conf = (prev == NGX_CONF_UNSET) ? default : prev;                    \
     }
 
+//合并配置块中parent块跟child块中的相同项。如果conf块还未解析到参数，则用prev块里的内容代替，如果prev块也未解析到，则使用default
+//其他类似宏，跟这个相似
 #define ngx_conf_merge_str_value(conf, prev, default)                        \
     if (conf.data == NULL) {                                                 \
         if (prev.data) {                                                     \

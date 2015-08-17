@@ -132,14 +132,14 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         cf->conf_file = &conf_file;
 
-        if (ngx_fd_info(fd, &cf->conf_file->file.info) == NGX_FILE_ERROR) {
+        if (ngx_fd_info(fd, &cf->conf_file->file.info) == NGX_FILE_ERROR) {//获取文件stat
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
                           ngx_fd_info_n " \"%s\" failed", filename->data);
         }
 
         cf->conf_file->buffer = &buf;
 
-        buf.start = ngx_alloc(NGX_CONF_BUFFER, cf->log);
+        buf.start = ngx_alloc(NGX_CONF_BUFFER, cf->log);	//分配4k buffer
         if (buf.start == NULL) {
             goto failed;
         }
@@ -168,7 +168,7 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
 
     for ( ;; ) {
-        rc = ngx_conf_read_token(cf);
+        rc = ngx_conf_read_token(cf);//读入一个token，一般是一行.读到的配置参数放到: (ngx_str_t*)(*((*cf).args)).elts
 
         /*
          * ngx_conf_read_token() may return
@@ -217,7 +217,8 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         /* rc == NGX_OK || rc == NGX_CONF_BLOCK_START */
 
-        if (cf->handler) {
+        if (cf->handler) {	//判断cf是否有handler回调，如果有的话，优先调用handler回调，如果没有，则会
+				//进入ngx_conf_handler进行一般处理.
 
             /*
              * the custom handler, i.e., that is used in the http's
@@ -289,18 +290,19 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
     ngx_str_t      *name;
     ngx_command_t  *cmd;
 
-    name = cf->args->elts;
+    name = cf->args->elts;//获取token这个关键字命令的名字
 
     found = 0;
 
-    for (i = 0; ngx_modules[i]; i++) {
+    for (i = 0; ngx_modules[i]; i++) {	//遍历每个模块，检查token（就是上面的name，比如这里的name可能是
+	    				//worker_process）是在哪个模块中被定义，并且进行处理
 
-        cmd = ngx_modules[i]->commands;
+        cmd = ngx_modules[i]->commands;	//找到每个模块的ngx_congx_command_t数组
         if (cmd == NULL) {
             continue;
         }
 
-        for ( /* void */ ; cmd->name.len; cmd++) {
+        for ( /* void */ ; cmd->name.len; cmd++) {	//变量每个每个模块的ngx_congx_command_t的元素
 
             if (name->len != cmd->name.len) {
                 continue;
@@ -310,7 +312,7 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
                 continue;
             }
 
-            found = 1;
+            found = 1;					//找到匹配的ngx_congx_command_t
 
             if (ngx_modules[i]->type != NGX_CONF_MODULE
                 && ngx_modules[i]->type != cf->module_type)
@@ -320,7 +322,7 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 
             /* is the directive's location right ? */
 
-            if (!(cmd->type & cf->cmd_type)) {
+            if (!(cmd->type & cf->cmd_type)) {		//查看配置项类型是否匹配
                 continue;
             }
 
@@ -340,7 +342,7 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 
             /* is the directive's argument count right ? */
 
-            if (!(cmd->type & NGX_CONF_ANY)) {
+            if (!(cmd->type & NGX_CONF_ANY)) {	//查看参数个数是否匹配
 
                 if (cmd->type & NGX_CONF_FLAG) {
 
@@ -374,6 +376,7 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 
             conf = NULL;
 
+	    //取出对应模块的conf结构体
             if (cmd->type & NGX_DIRECT_CONF) {
                 conf = ((void **) cf->ctx)[ngx_modules[i]->index];
 
@@ -388,7 +391,7 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
                 }
             }
 
-            rv = cmd->set(cf, cmd, conf);
+            rv = cmd->set(cf, cmd, conf);	//调每个配置项的set回调
 
             if (rv == NGX_CONF_OK) {
                 return NGX_OK;
@@ -513,7 +516,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 size = b->end - (b->start + len);
             }
 
-            n = ngx_read_file(&cf->conf_file->file, b->start + len, size,
+            n = ngx_read_file(&cf->conf_file->file, b->start + len, size,//读出配置文件内容到缓冲区b中
                               cf->conf_file->file.offset);
 
             if (n == NGX_ERROR) {
@@ -535,15 +538,15 @@ ngx_conf_read_token(ngx_conf_t *cf)
 
         ch = *b->pos++;
 
-        if (ch == LF) {
+        if (ch == LF) {			//检查是否到行尾
             cf->conf_file->line++;
 
-            if (sharp_comment) {
+            if (sharp_comment) {	//如果前面一行是注释行，那么现在开始设置新行的标志为：非注释行
                 sharp_comment = 0;
             }
         }
 
-        if (sharp_comment) {
+        if (sharp_comment) {		//注释行的话，跳过
             continue;
         }
 
@@ -674,7 +677,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 found = 1;
             }
 
-            if (found) {
+            if (found) {//找到了一个字符串
                 word = ngx_array_push(cf->args);
                 if (word == NULL) {
                     return NGX_ERROR;
@@ -686,9 +689,9 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 }
 
                 for (dst = word->data, src = start, len = 0;
-                     src < b->pos - 1;
-                     len++)
-                {
+                     src < b->pos - 1;		//没有直接拷贝，而是逐个字符读入，并做了转义字符的解析
+                     len++)			//在程序启动阶段做的，性能不是最最重要的，而是配置文件
+                {				//的灵活性.解析完命令后，会在字符串结尾加'\0'结尾符
                     if (*src == '\\') {
                         switch (src[1]) {
                         case '"':
@@ -720,7 +723,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 word->len = len;
 
                 if (ch == ';') {
-                    return NGX_OK;
+                    return NGX_OK;	//Nginx的每一行配置以 ';' 结尾，因此此处返回OK，表面解析到一个token
                 }
 
                 if (ch == '{') {
