@@ -28,43 +28,53 @@ typedef struct {
 
 
 struct ngx_event_s {
-    void            *data;
+    void            *data;	//事件相关的对象。通常data都是指向ngx_connection_t连接对象。开启文件异步I/O时，它可能会指向
+    				//ngx_event_aio_t结构体
 
-    unsigned         write:1;
+    unsigned         write:1;	//标志位，为1时表示事件是可写的。通常情况下，它表示对应的TCP连接目前状态是可写的，也就是连接
+    				//处于可以发送网络包的状态
 
-    unsigned         accept:1;
+    unsigned         accept:1;	//标志位，为1时表示为此事件可以建立新的连接。通常情况下，在ngx_cycle_t中的listening动态数组
+    				//中，每一个监听对象ngx_listening_t对应的读事件中的accept标志位才会是1
 
     /* used to detect the stale events in kqueue and epoll */
-    unsigned         instance:1;
+    unsigned         instance:1;//这个标志位用于区分当前事件是否过期，它仅仅是给事件驱动模块使用的，而事件消费模块可不用关心
+    				//。为什么需要这个标志位呢？当开始处理一批事件时，处理前面的事件可能会关闭一些连接，而这些连
+    				//接有可能影响这批事件中还未处理到的后面的事件。这时，可通过instance标志位来避免处理后面的已
+    				//经过期的事件。
 
     /*
      * the event was passed or would be passed to a kernel;
      * in aio mode - operation was posted.
      */
-    unsigned         active:1;
+    unsigned         active:1;	//标志位，为1表示当前事件是活跃的，为0表示事件是不活跃的。这个状态对应着事件驱动模块处理方式
+    				//的不同。例如，在添加事件，删除事件和处理事件时，active标志位的不同都会对应着不同的处理方式
+    				//。在使用事件时，一般不会直接改变active标志位。
 
-    unsigned         disabled:1;
+    unsigned         disabled:1;//标志位，为1表示禁用事件，仅在kqueue或者rtsig事件驱动模块中有效，而对于epoll事件驱动模块则没
+    				//有意义。
 
     /* the ready event; in aio mode 0 means that no operation can be posted */
-    unsigned         ready:1;
+    unsigned         ready:1;	//标志位，为1表示当前事件已经准备就绪，也就是说，允许这个事件的消费模块处理这个事件。在HTTP框
+    				//架中，经常会检查事件的ready标志位，以确定是否可以接收请求或者发送相应
 
-    unsigned         oneshot:1;
+    unsigned         oneshot:1;	//该标志位仅对kqueue,eventport等模块有意义，而对于linux上的epoll事件驱动模块则是无意义的。
 
     /* aio operation is complete */
-    unsigned         complete:1;
+    unsigned         complete:1;//该标志位用于异步AIO事件的处理
 
-    unsigned         eof:1;
-    unsigned         error:1;
+    unsigned         eof:1;	//标志位，为1时表示当前处理的字符流已经结束
+    unsigned         error:1;	//标志位，为1表示事件在处理过程中出现错误
 
-    unsigned         timedout:1;
-    unsigned         timer_set:1;
+    unsigned         timedout:1;//标志位，为1表示这个事件已经超时，用以提示事件的消费模块做超时处理，它与timer_set都用了定时器
+    unsigned         timer_set:1;//标志位，为1表示这个事件存在于定时器中
 
-    unsigned         delayed:1;
+    unsigned         delayed:1;	//标志位，delayed为1表示需要延迟处理这个事件，它仅用于限速功能.
 
-    unsigned         deferred_accept:1;
+    unsigned         deferred_accept:1;//是否开启了TCP_DEFER_ACCEPT功能
 
     /* the pending eof reported by kqueue, epoll or in aio chain operation */
-    unsigned         pending_eof:1;
+    unsigned         pending_eof:1;//标志位，为1表示等待字符流结束，它只与kqueue和aio事件驱动机制有关
 
     unsigned         posted:1;
 
@@ -97,30 +107,30 @@ struct ngx_event_s {
 #if (NGX_HAVE_KQUEUE) || (NGX_HAVE_IOCP)
     int              available;
 #else
-    unsigned         available:1;
+    unsigned         available:1;//标志位，在epoll事件驱动机制下表示一次尽可能多建立TCP连接，它与mulit_accept配置项对应
 #endif
 
-    ngx_event_handler_pt  handler;
+    ngx_event_handler_pt  handler;//这个事件发生时的处理方法，每个事件消费模块都会重新实现它
 
 
 #if (NGX_HAVE_IOCP)
     ngx_event_ovlp_t ovlp;
 #endif
 
-    ngx_uint_t       index;
+    ngx_uint_t       index;	//epoll 事件驱动方式不使用index
 
-    ngx_log_t       *log;
+    ngx_log_t       *log;	//log handler
 
-    ngx_rbtree_node_t   timer;
+    ngx_rbtree_node_t   timer;	//定时器节点，用于定时器红黑树中
 
     /* the posted queue */
-    ngx_queue_t      queue;
+    ngx_queue_t      queue;	//post事件队列
 
-    unsigned         closed:1;
+    unsigned         closed:1;	//标志位，为1时表示当前事件已经关闭，epoll模块没有使用它
 
     /* to test on worker exit */
-    unsigned         channel:1;
-    unsigned         resolver:1;
+    unsigned         channel:1;	//无实际意义
+    unsigned         resolver:1;//无实际意义
 
     unsigned         cancelable:1;
 
@@ -422,19 +432,19 @@ extern ngx_os_io_t  ngx_io;
 
 
 #define NGX_EVENT_MODULE      0x544E5645  /* "EVNT" */
-#define NGX_EVENT_CONF        0x02000000
+#define NGX_EVENT_CONF        0x02000000	//配置可以出现在event{}块中
 
 
 typedef struct {
     ngx_uint_t    connections;
-    ngx_uint_t    use;
+    ngx_uint_t    use;			//use时间模块的index
 
     ngx_flag_t    multi_accept;
-    ngx_flag_t    accept_mutex;
+    ngx_flag_t    accept_mutex;		//配置项，是否使用accpet锁
 
-    ngx_msec_t    accept_mutex_delay;
+    ngx_msec_t    accept_mutex_delay;	//配置项，accpet锁等待时间
 
-    u_char       *name;
+    u_char       *name;			//use模块的名称
 
 #if (NGX_DEBUG)
     ngx_array_t   debug_connection;
@@ -443,12 +453,12 @@ typedef struct {
 
 
 typedef struct {
-    ngx_str_t              *name;
+    ngx_str_t              *name;					//模块名称
 
-    void                 *(*create_conf)(ngx_cycle_t *cycle);
-    char                 *(*init_conf)(ngx_cycle_t *cycle, void *conf);
+    void                 *(*create_conf)(ngx_cycle_t *cycle);		//创建配置项结构体
+    char                 *(*init_conf)(ngx_cycle_t *cycle, void *conf);	//解析完配置后，被调用，初始化一些未赋值的配置
 
-    ngx_event_actions_t     actions;
+    ngx_event_actions_t     actions;					//此处利用了c的类型转换，实现类似多态的功能。
 } ngx_event_module_t;
 
 

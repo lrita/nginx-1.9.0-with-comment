@@ -10,7 +10,7 @@
 #include <ngx_event.h>
 
 
-ngx_queue_t  ngx_posted_accept_events;
+ngx_queue_t  ngx_posted_accept_events;	//accept事件队列
 ngx_queue_t  ngx_posted_events;
 
 
