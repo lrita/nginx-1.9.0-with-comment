@@ -14,10 +14,10 @@
 
 
 typedef struct {
-    u_char      *addr;
-    size_t       size;
-    ngx_str_t    name;
-    ngx_log_t   *log;
+    u_char      *addr;	//共享内存地址
+    size_t       size;	//内存大小
+    ngx_str_t    name;	//这块共享内存的名称
+    ngx_log_t   *log;	//log handler
     ngx_uint_t   exists;   /* unsigned  exists:1;  */
 } ngx_shm_t;
 
