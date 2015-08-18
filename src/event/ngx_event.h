@@ -187,22 +187,36 @@ struct ngx_event_aio_s {
 
 
 typedef struct {
-    ngx_int_t  (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
-    ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
+    ngx_int_t  (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);	//添加事件方法，它将负责把1个感兴趣的事件添加
+    										//到操作系统提供的事件驱动机制（如epoll，kqueue
+    										//等）中，这样，在事件发生之后，将可以在调用
+    										//下面的process_envets时获取这个事件。
 
-    ngx_int_t  (*enable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
-    ngx_int_t  (*disable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
+    ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);	//删除事件方法，它将一个已经存在于事件驱动机
+    										//制中的事件一出，这样以后即使这个事件发生，
+    										//调用process_events方法时也无法再获取这个事件
 
-    ngx_int_t  (*add_conn)(ngx_connection_t *c);
-    ngx_int_t  (*del_conn)(ngx_connection_t *c, ngx_uint_t flags);
+    ngx_int_t  (*enable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);	//启用一个事件，目前事件框架不会调用这个方法，
+    										//大部分事件驱动模块对于该方法的实现都是与上
+    										//面的add方法完全一致的
+
+    ngx_int_t  (*disable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);	//禁用一个事件，目前事件框架不会调用这个方法，
+    										//大部分事件驱动模块对于该方法的实现都是与上
+    										//面的del方法一致
+
+    ngx_int_t  (*add_conn)(ngx_connection_t *c);				//向事件驱动机制中添加一个新的连接，这意味着
+    										//连接上的读写事件都添加到事件驱动机制中了
+
+    ngx_int_t  (*del_conn)(ngx_connection_t *c, ngx_uint_t flags);		//从事件驱动机制中一出一个连续的读写事件
 
     ngx_int_t  (*notify)(ngx_event_handler_pt handler);
 
-    ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
-                   ngx_uint_t flags);
+    ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,		//在正常的工作循环中，将通过调用process_events
+                   ngx_uint_t flags);						//方法来处理事件。这个方法仅在ngx_process_events_and_timers
+    										//方法中调用，它是处理，分发事件的核心
 
-    ngx_int_t  (*init)(ngx_cycle_t *cycle, ngx_msec_t timer);
-    void       (*done)(ngx_cycle_t *cycle);
+    ngx_int_t  (*init)(ngx_cycle_t *cycle, ngx_msec_t timer);			//初始化事件驱动模块的方法
+    void       (*done)(ngx_cycle_t *cycle);					//退出事件驱动模块前调用的方法
 } ngx_event_actions_t;
 
 
