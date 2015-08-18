@@ -94,8 +94,8 @@ ngx_rbtree_insert(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
 
 
 void
-ngx_rbtree_insert_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
-    ngx_rbtree_node_t *sentinel)
+ngx_rbtree_insert_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,	//普通节点插入红黑树的方法
+    ngx_rbtree_node_t *sentinel)		//temp:根 node:待插入节点 sentinel:该树的哨兵
 {
     ngx_rbtree_node_t  **p;
 
@@ -119,8 +119,8 @@ ngx_rbtree_insert_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
 
 
 void
-ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
-    ngx_rbtree_node_t *sentinel)
+ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,		//计时器插入红黑树的方法
+    ngx_rbtree_node_t *sentinel)		//temp:根 node:待插入节点 sentinel:该树的哨兵
 {
     ngx_rbtree_node_t  **p;
 
@@ -138,7 +138,7 @@ ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
         p = ((ngx_rbtree_key_int_t) (node->key - temp->key) < 0)
             ? &temp->left : &temp->right;
 
-        if (*p == sentinel) {
+        if (*p == sentinel) {			//哨兵节点为空节点，所以此处为找到一个空节点
             break;
         }
 
@@ -149,7 +149,7 @@ ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
     node->parent = temp;
     node->left = sentinel;
     node->right = sentinel;
-    ngx_rbt_red(node);
+    ngx_rbt_red(node);				//新插入的接点都是红色的
 }
 
 

@@ -19,13 +19,13 @@ typedef ngx_int_t   ngx_rbtree_key_int_t;
 
 typedef struct ngx_rbtree_node_s  ngx_rbtree_node_t;
 
-struct ngx_rbtree_node_s {
-    ngx_rbtree_key_t       key;
+struct ngx_rbtree_node_s {			//红黑树节点结构
+    ngx_rbtree_key_t       key;			//该节点的key值
     ngx_rbtree_node_t     *left;
     ngx_rbtree_node_t     *right;
     ngx_rbtree_node_t     *parent;
-    u_char                 color;
-    u_char                 data;
+    u_char                 color;		//该节点的颜色	red:1 black:0
+    u_char                 data;		//该节点携带的数据
 };
 
 
@@ -34,10 +34,10 @@ typedef struct ngx_rbtree_s  ngx_rbtree_t;
 typedef void (*ngx_rbtree_insert_pt) (ngx_rbtree_node_t *root,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
-struct ngx_rbtree_s {
-    ngx_rbtree_node_t     *root;
-    ngx_rbtree_node_t     *sentinel;
-    ngx_rbtree_insert_pt   insert;
+struct ngx_rbtree_s {				//红黑树根结构
+    ngx_rbtree_node_t     *root;		//树根
+    ngx_rbtree_node_t     *sentinel;		//哨兵节点，必须是黑色
+    ngx_rbtree_insert_pt   insert;		//插入数据的方法
 };
 
 
