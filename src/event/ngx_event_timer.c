@@ -20,7 +20,7 @@ static ngx_rbtree_node_t  ngx_event_timer_sentinel;	//时间树的哨兵
  */
 
 ngx_int_t
-ngx_event_timer_init(ngx_log_t *log)
+ngx_event_timer_init(ngx_log_t *log)			//初始化时间红黑树
 {
     ngx_rbtree_init(&ngx_event_timer_rbtree, &ngx_event_timer_sentinel,
                     ngx_rbtree_insert_timer_value);
@@ -36,15 +36,15 @@ ngx_event_find_timer(void)
     ngx_rbtree_node_t  *node, *root, *sentinel;
 
     if (ngx_event_timer_rbtree.root == &ngx_event_timer_sentinel) {
-        return NGX_TIMER_INFINITE;
+        return NGX_TIMER_INFINITE;					//没有定时器
     }
 
     root = ngx_event_timer_rbtree.root;
     sentinel = ngx_event_timer_rbtree.sentinel;
 
-    node = ngx_rbtree_min(root, sentinel);
+    node = ngx_rbtree_min(root, sentinel);				//找到离当前时间最近的定时器
 
-    timer = (ngx_msec_int_t) (node->key - ngx_current_msec);
+    timer = (ngx_msec_int_t) (node->key - ngx_current_msec);		//获得时间差
 
     return (ngx_msec_t) (timer > 0 ? timer : 0);
 }
@@ -69,7 +69,7 @@ ngx_event_expire_timers(void)
 
         /* node->key > ngx_current_time */
 
-        if ((ngx_msec_int_t) (node->key - ngx_current_msec) > 0) {
+        if ((ngx_msec_int_t) (node->key - ngx_current_msec) > 0) {	//如果没到期的话退出
             return;
         }
 
@@ -79,7 +79,7 @@ ngx_event_expire_timers(void)
                        "event timer del: %d: %M",
                        ngx_event_ident(ev->data), ev->timer.key);
 
-        ngx_rbtree_delete(&ngx_event_timer_rbtree, &ev->timer);
+        ngx_rbtree_delete(&ngx_event_timer_rbtree, &ev->timer);		//到期后移除该定时器
 
 #if (NGX_DEBUG)
         ev->timer.left = NULL;
@@ -91,7 +91,7 @@ ngx_event_expire_timers(void)
 
         ev->timedout = 1;
 
-        ev->handler(ev);
+        ev->handler(ev);						//触发定时器的handler
     }
 }
 

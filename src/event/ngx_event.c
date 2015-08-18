@@ -222,23 +222,25 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 #endif
     }
 
-    if (ngx_use_accept_mutex) {
-        if (ngx_accept_disabled > 0) {
+    if (ngx_use_accept_mutex) {					//判断是否使用accpet锁
+        if (ngx_accept_disabled > 0) {				//大于0说明该进程接收的连接过多，放弃一次争抢accept mutex的
+								//机会
             ngx_accept_disabled--;
 
         } else {
-            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
+            if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {	//获得accpet锁
                 return;
             }
 
             if (ngx_accept_mutex_held) {
-                flags |= NGX_POST_EVENTS;
+                flags |= NGX_POST_EVENTS;			//将所有产生的事件放入到一个队列中。等释放锁以后再慢慢来处理
+								//事件。
 
-            } else {
+            } else {						//未持有accpet事件
                 if (timer == NGX_TIMER_INFINITE
                     || timer > ngx_accept_mutex_delay)
                 {
-                    timer = ngx_accept_mutex_delay;
+                    timer = ngx_accept_mutex_delay;		//获得下一次出发的定时器
                 }
             }
         }
@@ -246,24 +248,24 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 
     delta = ngx_current_msec;
 
-    (void) ngx_process_events(cycle, timer, flags);
+    (void) ngx_process_events(cycle, timer, flags);		//epoll开始wait事件，如果有事件触发，把相关事件放入post队列
 
     delta = ngx_current_msec - delta;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "timer delta: %M", delta);
 
-    ngx_event_process_posted(cycle, &ngx_posted_accept_events);
+    ngx_event_process_posted(cycle, &ngx_posted_accept_events);	//执行accpet_post队列中的事件
 
     if (ngx_accept_mutex_held) {
-        ngx_shmtx_unlock(&ngx_accept_mutex);
+        ngx_shmtx_unlock(&ngx_accept_mutex);			//如果持有accpet锁，放弃锁
     }
 
-    if (delta) {
+    if (delta) {						//如果有定时器到期，出发定时器执行
         ngx_event_expire_timers();
     }
 
-    ngx_event_process_posted(cycle, &ngx_posted_events);
+    ngx_event_process_posted(cycle, &ngx_posted_events);	//执行普通post队列中的事件
 }
 
 
@@ -348,7 +350,7 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
         }
     }
 
-    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
+    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {		//epoll使用此部分
 
         /* kqueue, epoll */
 
@@ -832,8 +834,12 @@ ngx_event_process_init(ngx_cycle_t *cycle)		//时间进程初始化，在fork之
 
 
 ngx_int_t
-ngx_send_lowat(ngx_connection_t *c, size_t lowat)
-{
+ngx_send_lowat(ngx_connection_t *c, size_t lowat)	//发送低潮限度
+{							// 理解发送低潮限度：如果应用程序没有调用send()来copy应用程序buff中
+							//的数据到socket发送缓冲区中，则随着发送缓冲区的数据被内核通过tcp协
+							//议发送出去，最后socket发送缓冲区的数据越来越少，可用的剩余空间越
+							//来越多，最后超过发送缓冲区的发送低潮限度，则epoll监听到这个socket
+							//可写，使得epoll循环返回，开始处理写I/O事件。 
     int  sndlowat;
 
 #if (NGX_HAVE_LOWAT_EVENT)

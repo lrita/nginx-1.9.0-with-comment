@@ -366,16 +366,16 @@ ngx_event_accept(ngx_event_t *ev)
 ngx_int_t
 ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 {
-    if (ngx_shmtx_trylock(&ngx_accept_mutex)) {
+    if (ngx_shmtx_trylock(&ngx_accept_mutex)) {			//先获得共享锁
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "accept mutex locked");
 
-        if (ngx_accept_mutex_held && ngx_accept_events == 0) {
+        if (ngx_accept_mutex_held && ngx_accept_events == 0) {	//判断是否持有accept锁
             return NGX_OK;
         }
 
-        if (ngx_enable_accept_events(cycle) == NGX_ERROR) {
+        if (ngx_enable_accept_events(cycle) == NGX_ERROR) {	//打开accpet事件触发
             ngx_shmtx_unlock(&ngx_accept_mutex);
             return NGX_ERROR;
         }
@@ -386,11 +386,12 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
         return NGX_OK;
     }
 
+    //以下是没有获得共享锁的情况
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "accept mutex lock failed: %ui", ngx_accept_mutex_held);
 
-    if (ngx_accept_mutex_held) {
-        if (ngx_disable_accept_events(cycle) == NGX_ERROR) {
+    if (ngx_accept_mutex_held) {				//判断是否持有accept锁
+        if (ngx_disable_accept_events(cycle) == NGX_ERROR) {	//关闭accpet事件触发
             return NGX_ERROR;
         }
 
