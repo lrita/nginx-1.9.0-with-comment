@@ -57,6 +57,7 @@ typedef struct {
 #define NGX_HAVE_CASELESS_FILESYSTEM  1
 #endif
 
+//对open的封装
 #define ngx_open_file(name, mode, create, access)                            \
     open((const char *) name, mode|create|O_BINARY, access)
 
@@ -69,6 +70,7 @@ typedef struct {
 
 #define ngx_open_file_n          "open()"
 
+//open参数的封装
 #define NGX_FILE_RDONLY          O_RDONLY
 #define NGX_FILE_WRONLY          O_WRONLY
 #define NGX_FILE_RDWR            O_RDWR
