@@ -10,7 +10,7 @@
 #include <ngx_event.h>
 
 
-ngx_os_io_t  ngx_io;
+ngx_os_io_t  ngx_io;					//当前使用的io函数集合
 
 
 static void ngx_drain_connections(void);
@@ -116,7 +116,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         }
 
         ls[i].socklen = NGX_SOCKADDRLEN;
-        if (getsockname(ls[i].fd, ls[i].sockaddr, &ls[i].socklen) == -1) {
+        if (getsockname(ls[i].fd, ls[i].sockaddr, &ls[i].socklen) == -1) {//获得fd的IP
             ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
                           "getsockname() of the inherited "
                           "socket #%d failed", ls[i].fd);
@@ -158,7 +158,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-        len = ngx_sock_ntop(ls[i].sockaddr, ls[i].socklen,
+        len = ngx_sock_ntop(ls[i].sockaddr, ls[i].socklen,	//获得IP的字符串
                             ls[i].addr_text.data, len, 1);
         if (len == 0) {
             return NGX_ERROR;
@@ -170,7 +170,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
         olen = sizeof(int);
 
-        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_RCVBUF, (void *) &ls[i].rcvbuf,
+        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_RCVBUF, (void *) &ls[i].rcvbuf,	//获得SOCKET的相关参数
                        &olen)
             == -1)
         {
@@ -598,7 +598,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_SETFIB)
         if (ls[i].setfib != -1) {
-            if (setsockopt(ls[i].fd, SOL_SOCKET, SO_SETFIB,
+            if (setsockopt(ls[i].fd, SOL_SOCKET, SO_SETFIB,	//Freebsd 7.2支持
                            (const void *) &ls[i].setfib, sizeof(int))
                 == -1)
             {
@@ -611,7 +611,8 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_TCP_FASTOPEN)
         if (ls[i].fastopen != -1) {
-            if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_FASTOPEN,
+            if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_FASTOPEN,	//linux kernel 3.7支持
+				    				//参考http://www.oschina.net/question/12_137950
                            (const void *) &ls[i].fastopen, sizeof(int))
                 == -1)
             {
@@ -658,7 +659,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 #ifdef SO_ACCEPTFILTER
 
         if (ls[i].delete_deferred) {
-            if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0)
+            if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0)//Freebsd支持，linux上为TCP_DEFER_ACCEPT
                 == -1)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
@@ -717,7 +718,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
                 value = 0;
             }
 
-            if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT,
+            if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT,//http://www.cnblogs.com/napoleon_liu/archive/2011/02/24/1964118.html
                            &value, sizeof(int))
                 == -1)
             {
@@ -839,7 +840,7 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
         c = ngx_cycle->free_connections;
     }
 
-    if (c == NULL) {
+    if (c == NULL) {	//实在没有可用链接
         ngx_log_error(NGX_LOG_ALERT, log, 0,
                       "%ui worker_connections are not enough",
                       ngx_cycle->connection_n);
@@ -857,7 +858,7 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
     rev = c->read;
     wev = c->write;
 
-    ngx_memzero(c, sizeof(ngx_connection_t));
+    ngx_memzero(c, sizeof(ngx_connection_t));	//初始化这个链接结构体
 
     c->read = rev;
     c->write = wev;
@@ -1012,7 +1013,7 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 
 
 static void
-ngx_drain_connections(void)
+ngx_drain_connections(void)			//从已经建立链接，但idle的连接池中拿出一个作为空闲
 {
     ngx_int_t          i;
     ngx_queue_t       *q;
