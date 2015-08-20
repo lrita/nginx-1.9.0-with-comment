@@ -40,7 +40,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_uint_t           i, n;
     ngx_log_t           *log;
     ngx_time_t          *tp;
-    ngx_conf_t           conf;
+    ngx_conf_t           conf;//与nginx.conf配置文件相关的一个变量，配置文件的解析都是围绕这个变量进行
     ngx_pool_t          *pool;
     ngx_cycle_t         *cycle, **old;
     ngx_shm_zone_t      *shm_zone, *oshm_zone;
@@ -55,7 +55,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     /* force localtime update with a new timezone */
 
-    tp = ngx_timeofday();
+    tp = ngx_timeofday();	//获取时间当前时间
     tp->sec = 0;
 
     ngx_time_update();
@@ -63,13 +63,13 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     log = old_cycle->log;
 
-    pool = ngx_create_pool(NGX_CYCLE_POOL_SIZE, log);
+    pool = ngx_create_pool(NGX_CYCLE_POOL_SIZE, log);	//16K
     if (pool == NULL) {
         return NULL;
     }
     pool->log = log;
 
-    cycle = ngx_pcalloc(pool, sizeof(ngx_cycle_t));
+    cycle = ngx_pcalloc(pool, sizeof(ngx_cycle_t));	//创建一个新的ngx_cycle_t结构
     if (cycle == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
@@ -124,7 +124,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->paths.pool = pool;
 
 
-    if (old_cycle->open_files.part.nelts) {
+    if (old_cycle->open_files.part.nelts) {//每个打开的文件都会放到cycle中的open_files中。
         n = old_cycle->open_files.part.nelts;
         for (part = old_cycle->open_files.part.next; part; part = part->next) {
             n += part->nelts;
@@ -142,7 +142,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    if (old_cycle->shared_memory.part.nelts) {
+    if (old_cycle->shared_memory.part.nelts) {//每个共享内存段都会放到shared_memory链表中
         n = old_cycle->shared_memory.part.nelts;
         for (part = old_cycle->shared_memory.part.next; part; part = part->next)
         {
@@ -184,7 +184,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    if (gethostname(hostname, NGX_MAXHOSTNAMELEN) == -1) {
+    if (gethostname(hostname, NGX_MAXHOSTNAMELEN) == -1) {//获取主机名，设置 hostname，这个时候hostname就是机器名，比如“localhost”
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "gethostname() failed");
         ngx_destroy_pool(pool);
         return NULL;
@@ -205,19 +205,19 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_CORE_MODULE) {
-            continue;
+        if (ngx_modules[i]->type != NGX_CORE_MODULE) {	//找到所有模块中的核心模块(core_module)
+            continue;					
         }
 
         module = ngx_modules[i]->ctx;
 
-        if (module->create_conf) {
+        if (module->create_conf) {			//调用核心模块的创建配置函数
             rv = module->create_conf(cycle);
             if (rv == NULL) {
                 ngx_destroy_pool(pool);
                 return NULL;
             }
-            cycle->conf_ctx[ngx_modules[i]->index] = rv;
+            cycle->conf_ctx[ngx_modules[i]->index] = rv;//存放每个核心模块的配置上下文
         }
     }
 
@@ -251,17 +251,20 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     log->log_level = NGX_LOG_DEBUG_ALL;
 #endif
 
-    if (ngx_conf_param(&conf) != NGX_CONF_OK) {
+    if (ngx_conf_param(&conf) != NGX_CONF_OK) {	//先解析一下参数
         environ = senv;
         ngx_destroy_cycle_pools(&conf);
         return NULL;
     }
 
-    if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
-        environ = senv;
-        ngx_destroy_cycle_pools(&conf);
-        return NULL;
-    }
+    if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {	//开始解析配置文件了，解析配置文件它会
+        environ = senv;							//会一行行读取，然后如果遇到指令则会查
+        ngx_destroy_cycle_pools(&conf);					//找到对应的ngx_command_t对象，然后执行
+        return NULL;							//对应的回调set方法。这里所有动作都在
+    }									//ngx_conf_parse这个函数中进行.
+    									//这函数是立即模块的核心函数，对配置文
+    									//件边解析边处理
+	//到这里配置文件就解析完成了，每个模块对应配置项的回调函数也执行过了
 
     if (ngx_test_config && !ngx_quiet_mode) {
         ngx_log_stderr(0, "the configuration file %s syntax is ok",
@@ -272,10 +275,10 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         if (ngx_modules[i]->type != NGX_CORE_MODULE) {
             continue;
         }
+						//依次找到每个core模块
+        module = ngx_modules[i]->ctx;		
 
-        module = ngx_modules[i]->ctx;
-
-        if (module->init_conf) {
+        if (module->init_conf) {		//依次调用每个core模块的init_conf
             if (module->init_conf(cycle, cycle->conf_ctx[ngx_modules[i]->index])
                 == NGX_CONF_ERROR)
             {
@@ -286,7 +289,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
-    if (ngx_process == NGX_PROCESS_SIGNALLER) {
+    if (ngx_process == NGX_PROCESS_SIGNALLER) {//如果是单进程的话，不进行后续操作
         return cycle;
     }
 
@@ -312,11 +315,11 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         {
             /* new pid file name */
 
-            if (ngx_create_pidfile(&ccf->pid, log) != NGX_OK) {
+            if (ngx_create_pidfile(&ccf->pid, log) != NGX_OK) {	//创建pidfile
                 goto failed;
             }
 
-            ngx_delete_pidfile(old_cycle);
+            ngx_delete_pidfile(old_cycle);			//删除pidfile
         }
     }
 
@@ -326,12 +329,13 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
+    //创建client_body_temp，proxy_temp，fastcgi_temp，uwsgi_temp，scgi_temp这几个目录
     if (ngx_create_paths(cycle, ccf->user) != NGX_OK) {
         goto failed;
     }
 
 
-    if (ngx_log_open_default(cycle) != NGX_OK) {
+    if (ngx_log_open_default(cycle) != NGX_OK) {	//再次检查new_log是否OK
         goto failed;
     }
 
@@ -381,7 +385,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 #endif
     }
 
-    cycle->log = &cycle->new_log;
+    cycle->log = &cycle->new_log;	//new_log代替log
     pool->log = &cycle->new_log;
 
 
@@ -576,12 +580,12 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
-    if (ngx_open_listening_sockets(cycle) != NGX_OK) {
+    if (ngx_open_listening_sockets(cycle) != NGX_OK) {//依次进行socket,bind,liste
         goto failed;
     }
 
     if (!ngx_test_config) {
-        ngx_configure_listening_sockets(cycle);
+        ngx_configure_listening_sockets(cycle);		//设置socket参数
     }
 
 
@@ -594,7 +598,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     pool->log = cycle->log;
 
     for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->init_module) {
+        if (ngx_modules[i]->init_module) {//调用init_module对所有的模块进行初始化，调用所有模块的ngx_XXX_module_init钩子
             if (ngx_modules[i]->init_module(cycle) != NGX_OK) {
                 /* fatal */
                 exit(1);
@@ -1003,7 +1007,7 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
         return 1;
     }
 
-    n = ngx_read_file(&file, buf, NGX_INT64_LEN + 2, 0);
+    n = ngx_read_file(&file, buf, NGX_INT64_LEN + 2, 0);	//读取pidfile
 
     if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -1016,7 +1020,7 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
 
     while (n-- && (buf[n] == CR || buf[n] == LF)) { /* void */ }
 
-    pid = ngx_atoi(buf, ++n);
+    pid = ngx_atoi(buf, ++n);					//获取pid
 
     if (pid == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
@@ -1062,8 +1066,8 @@ ngx_test_lockfile(u_char *file, ngx_log_t *log)
 
 
 void
-ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
-{
+ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)	//将该进程已经打开的全部文件再重新open一次，切割日志
+{							//等功能跟此有关
     ngx_fd_t          fd;
     ngx_uint_t        i;
     ngx_list_part_t  *part;
