@@ -18,7 +18,8 @@ ngx_atomic_int_t      ngx_random_number = 123456;
 
 
 ngx_int_t
-ngx_get_full_name(ngx_pool_t *pool, ngx_str_t *prefix, ngx_str_t *name)
+ngx_get_full_name(ngx_pool_t *pool, ngx_str_t *prefix, ngx_str_t *name)//如果name不是一个绝对路径，则将prefix
+									//与name链接起来
 {
     size_t      len;
     u_char     *p, *n;
@@ -56,7 +57,7 @@ ngx_get_full_name(ngx_pool_t *pool, ngx_str_t *prefix, ngx_str_t *name)
 
 
 static ngx_int_t
-ngx_test_full_name(ngx_str_t *name)
+ngx_test_full_name(ngx_str_t *name)	//测试name是否是一个绝对路径
 {
 #if (NGX_WIN32)
     u_char  c0, c1;

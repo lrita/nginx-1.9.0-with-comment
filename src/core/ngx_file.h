@@ -15,13 +15,15 @@
 
 struct ngx_file_s {
     ngx_fd_t                   fd;
-    ngx_str_t                  name;
-    ngx_file_info_t            info;
+    ngx_str_t                  name;		//文件名称
+    ngx_file_info_t            info;		//文件资源信息，实际就是LINUX系统定义的stat结构
 
-    off_t                      offset;
-    off_t                      sys_offset;
+    off_t                      offset;		//该偏移量告诉Nginx现在处理文件到何处了，一般不用设置它。Nginx框架会根据当前
+    						//发送状态设置。
 
-    ngx_log_t                 *log;
+    off_t                      sys_offset;	//当前文件系统偏移量，一般不用设置它。
+
+    ngx_log_t                 *log;		//日志对象，相关日志会由此输出。
 
 #if (NGX_THREADS)
     ngx_int_t                (*thread_handler)(ngx_thread_task_t *task,
@@ -34,7 +36,7 @@ struct ngx_file_s {
 #endif
 
     unsigned                   valid_info:1;
-    unsigned                   directio:1;
+    unsigned                   directio:1;	//与配置文件中的directio配置项相对应，在发送大文件时设置为1
 };
 
 
