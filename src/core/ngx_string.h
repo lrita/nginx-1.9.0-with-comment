@@ -25,16 +25,20 @@ typedef struct {
 } ngx_keyval_t;
 
 
+//http://blog.csdn.net/brainkick/article/details/7515904
 typedef struct {
-    unsigned    len:28;
+    unsigned    len:28;			//变量值的长度
 
-    unsigned    valid:1;
-    unsigned    no_cacheable:1;
-    unsigned    not_found:1;
-    unsigned    escape:1;
+    unsigned    valid:1;		//变量是否有效
+    unsigned    no_cacheable:1;		//变量是否是可缓存的，一般来说，某些变量在第一次得到变量值后，后面再次用到时，可以
+    					//直接使用上次的值，而对于一些所谓的no_cacheable的变量，则需要在每次使用的时候，都
+    					//要通过get_handler之类操作，再次获取
 
-    u_char     *data;
-} ngx_variable_value_t;
+    unsigned    not_found:1;		//变量没有找到，一般是指某个变量没用能够通过get获取到其变量值
+    unsigned    escape:1;		//变量值是否需要作转义处理
+
+    u_char     *data;			//变量值
+} ngx_variable_value_t;		//含义为变量值，跟ngx_http_variable_s(变量)是一对
 
 
 #define ngx_string(str)     { sizeof(str) - 1, (u_char *) str }

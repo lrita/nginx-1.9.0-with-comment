@@ -1107,7 +1107,7 @@ ngx_http_variable_content_length(ngx_http_request_t *r,
 
 static ngx_int_t
 ngx_http_variable_host(ngx_http_request_t *r, ngx_http_variable_value_t *v,
-    uintptr_t data)
+    uintptr_t data)//在调用这个handler时需要传递http request对象，以及v用来存放结果，data即在变量定义时中预留的。
 {
     ngx_http_core_srv_conf_t  *cscf;
 
@@ -2443,13 +2443,13 @@ ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re, ngx_str_t *s)
 
 
 ngx_int_t
-ngx_http_variables_add_core_vars(ngx_conf_t *cf)
+ngx_http_variables_add_core_vars(ngx_conf_t *cf)	//该函数调用是cf->ctx已经被替换为ngx_http_conf_ctx_t结构了
 {
     ngx_int_t                   rc;
     ngx_http_variable_t        *cv, *v;
     ngx_http_core_main_conf_t  *cmcf;
 
-    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);	//获得ngx_http_core_module对应的main_conf
 
     cmcf->variables_keys = ngx_pcalloc(cf->temp_pool,
                                        sizeof(ngx_hash_keys_arrays_t));
@@ -2474,7 +2474,7 @@ ngx_http_variables_add_core_vars(ngx_conf_t *cf)
 
         *v = *cv;
 
-        rc = ngx_hash_add_key(cmcf->variables_keys, &v->name, v,
+        rc = ngx_hash_add_key(cmcf->variables_keys, &v->name, v,		//http变量数组中每项加入到hash表中
                               NGX_HASH_READONLY_KEY);
 
         if (rc == NGX_OK) {
