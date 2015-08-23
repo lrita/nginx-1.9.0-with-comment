@@ -15,10 +15,10 @@
 
 
 typedef struct {
-     ngx_uint_t  command;
-     ngx_pid_t   pid;
-     ngx_int_t   slot;
-     ngx_fd_t    fd;
+     ngx_uint_t  command;	//命令
+     ngx_pid_t   pid;		//channel通向连接子进程的pid
+     ngx_int_t   slot;		//要跳过的slot
+     ngx_fd_t    fd;		//写fd
 } ngx_channel_t;
 
 
