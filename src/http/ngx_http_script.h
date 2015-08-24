@@ -37,29 +37,44 @@ typedef struct {
 
 
 typedef struct {
-    ngx_conf_t                 *cf;
-    ngx_str_t                  *source;
+    ngx_conf_t                 *cf;			//配置信息
+    ngx_str_t                  *source;			//需要compile的字符串
 
-    ngx_array_t               **flushes;
-    ngx_array_t               **lengths;
-    ngx_array_t               **values;
+    ngx_array_t               **flushes;		//
+    ngx_array_t               **lengths;		//处理变量长度的处理子数组
+    ngx_array_t               **values;			//处理变量内容的处理子数组
 
-    ngx_uint_t                  variables;
-    ngx_uint_t                  ncaptures;
-    ngx_uint_t                  captures_mask;
-    ngx_uint_t                  size;
+    ngx_uint_t                  variables;		//普通变量的个数，而非其他三种(args变量，$n变量以及常量字符串)
 
-    void                       *main;
+    //下面二个变量和dup_capture放在一起讨论，他们都跟pcre的正则处理相关，这三个用到的地方比较少
+    ngx_uint_t                  ncaptures;		//当前处理时，出现的$n变量的最大值，如配置的最大为$3，那么ncaptures就等于3
+    ngx_uint_t                  captures_mask;		//以位移的形式保存$1,$2...$9等变量，即响应位置上置1来表示，主要的作用是
+    							//为dup_capture准备，正是由于这个mask的存在，才比较容易得到是否有重复
+    							//的$n出现。
 
-    unsigned                    compile_args:1;
-    unsigned                    complete_lengths:1;
-    unsigned                    complete_values:1;
-    unsigned                    zero:1;
-    unsigned                    conf_prefix:1;
-    unsigned                    root_prefix:1;
+    ngx_uint_t                  size;			//待compile的字符串中，"常量字符串"的总长度
 
-    unsigned                    dup_capture:1;
-    unsigned                    args:1;
+    void                       *main;			//对于main这个成员，有许多要挖掘的东西。main一般用来指向一个
+    							//ngx_http_script_regex_code_t的结构.
+
+    unsigned                    compile_args:1;		//是否需要处理请求参数
+    unsigned                    complete_lengths:1;	//是否设置lengths数组的终止符，即NULL
+    unsigned                    complete_values:1;	//是否设置values数组的终止符
+    unsigned                    zero:1;			//values数组运行时，得到的字符串是否追加'\0'结尾
+    unsigned                    conf_prefix:1;		//是否在生成的文件名前，追加路径前缀
+    unsigned                    root_prefix:1;		//同conf_prefix
+
+    unsigned                    dup_capture:1;		//这个标记位主要在rewrite模块里使用，在ngx_http_rewrite中，
+    							//if (sc.variables == 0 && !sc.dup_capture) {
+    							//	regex->lengths = NULL;
+    							//} 
+							//没有重复的$n，那么regex->lengths被置为NULL，这个设置很关键，在函数
+							//ngx_http_script_regex_start_code中就是通过对regex->lengths的判断，
+							//来做不同的处理，因为在没有重复的$n的时候，可以通过正则自身的captures
+    							//机制来获取$n，一旦出现重复的，那么pcre正则自身的captures并不能满足
+    							//我们的要求，我们需要用自己handler来处理。
+
+    unsigned                    args:1;			//待compile的字符串中是否发现了'?'
 } ngx_http_script_compile_t;
 
 

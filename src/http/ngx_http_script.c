@@ -128,10 +128,10 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
         }
     }
 
-    if ((v->len == 0 || v->data[0] != '$')
+    if ((v->len == 0 || v->data[0] != '$')		//如果ccv->value不为'$'开头且有系统前缀，则认为是一个文件
         && (ccv->conf_prefix || ccv->root_prefix))
     {
-        if (ngx_conf_full_name(ccv->cf->cycle, v, ccv->conf_prefix) != NGX_OK) {
+        if (ngx_conf_full_name(ccv->cf->cycle, v, ccv->conf_prefix) != NGX_OK) {//打开这个文件
             return NGX_ERROR;
         }
 
@@ -145,7 +145,7 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
     ccv->complex_value->values = NULL;
 
     if (nv == 0 && nc == 0) {
-        return NGX_OK;
+        return NGX_OK;					//如果是文件则此处返回
     }
 
     n = nv + 1;
@@ -336,7 +336,7 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
     ngx_str_t    name;
     ngx_uint_t   i, bracket;
 
-    if (ngx_http_script_init_arrays(sc) != NGX_OK) {
+    if (ngx_http_script_init_arrays(sc) != NGX_OK) {				//分配编译空间
         return NGX_ERROR;
     }
 
@@ -347,14 +347,14 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
         if (sc->source->data[i] == '$') {
 
             if (++i == sc->source->len) {
-                goto invalid_variable;
+                goto invalid_variable;						//如果以$结尾，出错
             }
 
 #if (NGX_PCRE)
             {
             ngx_uint_t  n;
 
-            if (sc->source->data[i] >= '1' && sc->source->data[i] <= '9') {
+            if (sc->source->data[i] >= '1' && sc->source->data[i] <= '9') {	//如果是$1 $2 $3类的变量进行captures标记
 
                 n = sc->source->data[i] - '0';
 
@@ -403,7 +403,7 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
                     || (ch >= '0' && ch <= '9')
                     || ch == '_')
                 {
-                    continue;
+                    continue;							//过滤变量名称
                 }
 
                 break;
@@ -420,16 +420,20 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
                 goto invalid_variable;
             }
 
-            sc->variables++;
+            sc->variables++;							//过滤出一个变量
 
-            if (ngx_http_script_add_var_code(sc, &name) != NGX_OK) {
+            if (ngx_http_script_add_var_code(sc, &name) != NGX_OK) {		//对变量进行处理
                 return NGX_ERROR;
             }
 
             continue;
         }
 
-        if (sc->source->data[i] == '?' && sc->compile_args) {
+        if (sc->source->data[i] == '?' && sc->compile_args) {	//程序到这里意味着一个变量分离出来，或者还没有碰到变量，一些
+								//非变量的字符串，这里不妨称为"常量字符串"，这里涉及到请求参
+								//数部分的处理，比较简单。这个地方一般是在一次分离变量或者常
+								//量结束后，后面紧跟'?'的情况相关的处理子在
+								//ngx_http_script_add_args_code 会设置
             sc->args = 1;
             sc->compile_args = 0;
 
@@ -442,15 +446,18 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
             continue;
         }
 
-        name.data = &sc->source->data[i];
+        name.data = &sc->source->data[i];			//这里name保存一段所谓的"常量字符串"
 
-        while (i < sc->source->len) {
+        while (i < sc->source->len) {				//分离该常量字符串
 
-            if (sc->source->data[i] == '$') {
+            if (sc->source->data[i] == '$') {			//碰到'$'意味着碰到了下一个变量
                 break;
             }
 
-            if (sc->source->data[i] == '?') {
+            if (sc->source->data[i] == '?') {			//此处意味着我们在一个常量字符串分离过程中遇到了'?'，如果我
+		    						//们不需要对请求参数做特殊处理的话，即sc->compile_args = 0，
+		    						//那么我们就将其作为常量字符串的一部分来处理。否则，当前的常量
+		    						//字符串会从'?'处，截断，分成两部分。
 
                 sc->args = 1;
 
@@ -463,16 +470,16 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
             name.len++;
         }
 
-        sc->size += name.len;
+        sc->size += name.len;		//一个常量字符串分离完毕，sc->size统计整个字符串(即sc->source)中，常量字符串的总长度
 
-        if (ngx_http_script_add_copy_code(sc, &name, (i == sc->source->len))
+        if (ngx_http_script_add_copy_code(sc, &name, (i == sc->source->len))	//常量字符串的处理子由这个函数来设置
             != NGX_OK)
         {
             return NGX_ERROR;
         }
     }
 
-    return ngx_http_script_done(sc);
+    return ngx_http_script_done(sc);				//本次compile结束，做一些收尾善后工作
 
 invalid_variable:
 
