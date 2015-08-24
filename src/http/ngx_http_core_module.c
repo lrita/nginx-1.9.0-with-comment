@@ -11,8 +11,8 @@
 
 
 typedef struct {
-    u_char    *name;
-    uint32_t   method;
+    u_char    *name;	//名称字符串
+    uint32_t   method;	//掩码
 } ngx_http_method_name_t;
 
 
@@ -779,7 +779,9 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_core_module_ctx = {
-    ngx_http_core_preconfiguration,        /* preconfiguration */
+    ngx_http_core_preconfiguration,        /* preconfiguration *///在ngx_http_core_create_main_conf,ngx_http_core_create_srv_conf,
+    								 //ngx_http_core_create_loc_conf执行后再执行
+
     ngx_http_core_postconfiguration,       /* postconfiguration */
 
     ngx_http_core_create_main_conf,        /* create main configuration */
@@ -892,25 +894,27 @@ ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "generic phase: %ui", r->phase_handler);
 
-    rc = ph->handler(r);
+    rc = ph->handler(r);	//调用这一阶段各个HTTP模块添加的handler处理方法
 
-    if (rc == NGX_OK) {
+    if (rc == NGX_OK) {		//如果handler返回NGX_OK，之后将进入下一阶段处理，而不会理会当前阶段中的其他剩余
+	    			//处理方法
         r->phase_handler = ph->next;
         return NGX_AGAIN;
     }
 
-    if (rc == NGX_DECLINED) {
+    if (rc == NGX_DECLINED) {	//如果handler返回NGX_DECLINED，那么将进入下一个处理方法，下一个处理方法可能在
+	    			//本阶段也可能是下一阶段
         r->phase_handler++;
         return NGX_AGAIN;
     }
 
-    if (rc == NGX_AGAIN || rc == NGX_DONE) {
+    if (rc == NGX_AGAIN || rc == NGX_DONE) {//如果handler返回NGX_AGAIN或NGX_DONE，那么当前请求将停留在当前阶段
         return NGX_OK;
     }
 
     /* rc == NGX_ERROR || rc == NGX_HTTP_...  */
 
-    ngx_http_finalize_request(r, rc);
+    ngx_http_finalize_request(r, rc);	//如果handler返回NGX_ERROR或NGX_HTTP_，则结束
 
     return NGX_OK;
 }
@@ -1387,7 +1391,9 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_int_t  rc;
     ngx_str_t  path;
 
-    if (r->content_handler) {
+    if (r->content_handler) {				//如果设置了对应location的loc_conf中handler，则会在ngx_http_update_location_config
+	    						//中把handler赋值给content_handler，从而进入该代码块，仅进行handler
+	    						//的调用，忽略NGX_HTTP_CONTENT_PHASE阶段的其他处理方法
         r->write_event_handler = ngx_http_request_empty_handler;
         ngx_http_finalize_request(r, r->content_handler(r));
         return NGX_OK;
@@ -2446,9 +2452,9 @@ ngx_http_gzip_quantity(u_char *p, u_char *last)
 
 
 ngx_int_t
-ngx_http_subrequest(ngx_http_request_t *r,
-    ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **psr,
-    ngx_http_post_subrequest_t *ps, ngx_uint_t flags)
+ngx_http_subrequest(ngx_http_request_t *r,			//r:父请求，uri:子请求的URI，args:子请求uri的参数
+    ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **psr,	//psr:生成的子请求，ps:子请求回调结构体，
+    ngx_http_post_subrequest_t *ps, ngx_uint_t flags)		//flags:1.没有特殊需求时填0
 {
     ngx_time_t                    *tp;
     ngx_connection_t              *c;
@@ -2456,7 +2462,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     ngx_http_core_srv_conf_t      *cscf;
     ngx_http_postponed_request_t  *pr, *p;
 
-    r->main->subrequests--;
+    r->main->subrequests--;					//一个request最多可以创建200个subrequest
 
     if (r->main->subrequests == 0) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -2961,7 +2967,7 @@ ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r, ngx_addr_t *addr,
 
 
 static char *
-ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
+ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)	//参考http://tech.uc.cn/?p=300的图
 {
     char                        *rv;
     void                        *mconf;
@@ -3417,7 +3423,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 static ngx_int_t
 ngx_http_core_preconfiguration(ngx_conf_t *cf)
 {
-    return ngx_http_variables_add_core_vars(cf);
+    return ngx_http_variables_add_core_vars(cf);	//将ngx_http_core_variables数组中每项加入到一个hash表中
 }
 
 
@@ -3440,7 +3446,7 @@ ngx_http_core_create_main_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-    if (ngx_array_init(&cmcf->servers, cf->pool, 4,
+    if (ngx_array_init(&cmcf->servers, cf->pool, 4,		//预先分配4个server配置
                        sizeof(ngx_http_core_srv_conf_t *))
         != NGX_OK)
     {
@@ -3987,7 +3993,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static char *
-ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)	//解析配置项listen
 {
     ngx_http_core_srv_conf_t *cscf = conf;
 
@@ -4555,7 +4561,7 @@ static ngx_http_method_name_t  ngx_methods_names[] = {
 
 
 static char *
-ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)//解析配置项limit_except
 {
     ngx_http_core_loc_conf_t *pclcf = conf;
 
@@ -4573,7 +4579,7 @@ ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "duplicate";
     }
 
-    pclcf->limit_except = 0xffffffff;
+    pclcf->limit_except = 0xffffffff;	//允许的方法
 
     value = cf->args->elts;
 
@@ -4655,7 +4661,7 @@ ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)//解析配置项aio
 {
     ngx_http_core_loc_conf_t *clcf = conf;
 
@@ -4765,8 +4771,8 @@ ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_http_core_directio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
+ngx_http_core_directio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)//解析配置项directio
+{								//该指令允许使用标志O_DIRECT（FreeBSD，Linux）
     ngx_http_core_loc_conf_t *clcf = conf;
 
     ngx_str_t  *value;
@@ -4805,7 +4811,7 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_compile_complex_value_t   ccv;
 
     if (clcf->error_pages == NULL) {
-        clcf->error_pages = ngx_array_create(cf->pool, 4,
+        clcf->error_pages = ngx_array_create(cf->pool, 4,	//创建数组
                                              sizeof(ngx_http_err_page_t));
         if (clcf->error_pages == NULL) {
             return NGX_CONF_ERROR;
@@ -4816,7 +4822,7 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     i = cf->args->nelts - 2;
 
-    if (value[i].data[0] == '=') {
+    if (value[i].data[0] == '=') {//error_page  404 = /index.html;  如果有'='时 出现相关错误时采用304定向到URI上
         if (i == 1) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "invalid value \"%V\"", &value[i]);
@@ -4839,11 +4845,11 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         n = 2;
 
     } else {
-        overwrite = -1;
+        overwrite = -1;				//不进行304
         n = 1;
     }
 
-    uri = value[cf->args->nelts - 1];
+    uri = value[cf->args->nelts - 1];		//获取error_page的 URI
 
     ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
@@ -4857,7 +4863,7 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_str_null(&args);
 
-    if (cv.lengths == NULL && uri.len && uri.data[0] == '/') {
+    if (cv.lengths == NULL && uri.len && uri.data[0] == '/') {//URI为'/'开头时，进入此代码块
         p = (u_char *) ngx_strchr(uri.data, '?');
 
         if (p) {
@@ -4869,8 +4875,8 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    for (i = 1; i < cf->args->nelts - n; i++) {
-        err = ngx_array_push(clcf->error_pages);
+    for (i = 1; i < cf->args->nelts - n; i++) {		//依次将多个错误代码加入error_pages数组
+        err = ngx_array_push(clcf->error_pages);	//如error_page   500 502 503 504  /50x.html;
         if (err == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -5073,7 +5079,7 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)		//解析配置项error_log
 {
     ngx_http_core_loc_conf_t *clcf = conf;
 
@@ -5082,7 +5088,7 @@ ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)		//解析配置项keepalive_timeout
 {
     ngx_http_core_loc_conf_t *clcf = conf;
 
@@ -5115,7 +5121,7 @@ ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)		//配置项internal
 {
     ngx_http_core_loc_conf_t *clcf = conf;
 
@@ -5130,7 +5136,7 @@ ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)		//解析配置项resolver
 {
     ngx_http_core_loc_conf_t  *clcf = conf;
 
@@ -5142,7 +5148,7 @@ ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    clcf->resolver = ngx_resolver_create(cf, &value[1], cf->args->nelts - 1);
+    clcf->resolver = ngx_resolver_create(cf, &value[1], cf->args->nelts - 1);	//根据参数生成ngx_resolver_t
     if (clcf->resolver == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -5154,7 +5160,7 @@ ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HTTP_GZIP)
 
 static char *
-ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)	//解析gzip_disable配置项
 {
     ngx_http_core_loc_conf_t  *clcf = conf;
 
@@ -5184,7 +5190,7 @@ ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 1; i < cf->args->nelts; i++) {
 
-        if (ngx_strcmp(value[i].data, "msie6") == 0) {
+        if (ngx_strcmp(value[i].data, "msie6") == 0) {		//如果配置IE6
             clcf->gzip_disable_msie6 = 1;
             continue;
         }
@@ -5206,12 +5212,12 @@ ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         rc.pattern = value[i];
         rc.options = NGX_REGEX_CASELESS;
 
-        if (ngx_regex_compile(&rc) != NGX_OK) {
+        if (ngx_regex_compile(&rc) != NGX_OK) {			//把相关正则表达式进行编译
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V", &rc.err);
             return NGX_CONF_ERROR;
         }
 
-        re->regex = rc.regex;
+        re->regex = rc.regex;					//将编译后的正则表达式加入数组
         re->name = value[i].data;
     }
 
@@ -5348,7 +5354,7 @@ ngx_http_disable_symlinks(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data)
+ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data)	//配置项send_lowat参数检查回调
 {
 #if (NGX_FREEBSD)
     ssize_t *np = data;
@@ -5377,7 +5383,7 @@ ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data)
 
 
 static char *
-ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data)
+ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data)		//配置项connection_pool_size参数的检查回调
 {
     size_t *sp = data;
 

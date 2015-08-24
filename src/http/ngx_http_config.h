@@ -22,17 +22,20 @@ typedef struct {
 
 
 typedef struct {
-    ngx_int_t   (*preconfiguration)(ngx_conf_t *cf);	//解析配置文件前调用，如果返回失败，会终止进程
-    ngx_int_t   (*postconfiguration)(ngx_conf_t *cf);	//完成配置文件解析后调用
+    ngx_int_t   (*preconfiguration)(ngx_conf_t *cf);	//解析配置文件的http{...}内的内容前调用，如果返回失败，
+    							//会终止进程
+
+    ngx_int_t   (*postconfiguration)(ngx_conf_t *cf);	//解析完配置文件的http{...}内的内容后调用
 
     void       *(*create_main_conf)(ngx_conf_t *cf);	//当需要创建数据结构用户存储main级别(直属于http{...}块的配置)的全局
     							//配置项时,可以通过create_main_conf回调方法创建储存全局配置的结构体
 
-    char       *(*init_main_conf)(ngx_conf_t *cf, void *conf);//常用户创建main配置项
+    char       *(*init_main_conf)(ngx_conf_t *cf, void *conf);//解析完main配置项后调用
 
     void       *(*create_srv_conf)(ngx_conf_t *cf);	//当需要创建数据结构用户存储srv级别(直属于虚拟机server{...}块的配置)
     							//的配置项时,可以通过create_srv_conf回调方法创建储存srv配置的结构体
-    char       *(*merge_srv_conf)(ngx_conf_t *cf, void *prev, void *conf);//用于合并srv和main级别下同名配置项
+    char       *(*merge_srv_conf)(ngx_conf_t *cf, void *prev, void *conf);//用于合并srv和main级别下同名配置项，
+    									  //可以main下的配置合并到srv配置中去。
 
     void       *(*create_loc_conf)(ngx_conf_t *cf);	//当需要创建数据结构用户存储loc级别(直属于location{...}块的配置)的全
     							//局配置项时,可以通过create_loc_conf回调方法创建储存全局配置的结构体

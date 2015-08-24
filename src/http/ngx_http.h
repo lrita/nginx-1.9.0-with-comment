@@ -75,8 +75,9 @@ typedef struct {
 } ngx_http_status_t;
 
 
-#define ngx_http_get_module_ctx(r, module)  (r)->ctx[module.ctx_index]
-#define ngx_http_set_ctx(r, c, module)      r->ctx[module.ctx_index] = c;
+//因为一次请求可能多次进入请求对应模块的handler执行，因此对应每个请求需要一个模块上下文记录该请求的执行状态
+#define ngx_http_get_module_ctx(r, module)  (r)->ctx[module.ctx_index]	//从ngx_http_request_t结构体中获得module对应的上下文结构体
+#define ngx_http_set_ctx(r, c, module)      r->ctx[module.ctx_index] = c;//设置ngx_http_request_t结构体中对应module存储的上下文结构体
 
 
 ngx_int_t ngx_http_add_location(ngx_conf_t *cf, ngx_queue_t **locations,

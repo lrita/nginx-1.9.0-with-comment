@@ -192,7 +192,8 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 
 
 void
-ngx_http_init_connection(ngx_connection_t *c)
+ngx_http_init_connection(ngx_connection_t *c)	//当有listen socket可读，执行accpet后，从链接池取出一个可用链接，然后在执行
+						//此函数，初始化这个链接
 {
     ngx_uint_t              i;
     ngx_event_t            *rev;
@@ -309,8 +310,9 @@ ngx_http_init_connection(ngx_connection_t *c)
     c->log_error = NGX_ERROR_INFO;
 
     rev = c->read;
-    rev->handler = ngx_http_wait_request_handler;
-    c->write->handler = ngx_http_empty_handler;
+    rev->handler = ngx_http_wait_request_handler;		//新建链接读事件handler
+    c->write->handler = ngx_http_empty_handler;			//写事件handler暂设置为空操作，解析完请求后对应的location
+    								//会重新设置此handler
 
 #if (NGX_HTTP_SPDY)
     if (hc->addr_conf->spdy) {
@@ -348,22 +350,23 @@ ngx_http_init_connection(ngx_connection_t *c)
         c->log->action = "reading PROXY protocol";
     }
 
-    if (rev->ready) {
+    if (rev->ready) {						//如果接收准备好了
         /* the deferred accept(), iocp */
 
-        if (ngx_use_accept_mutex) {
+        if (ngx_use_accept_mutex) {				//如果使用了mutex锁，则post这个event，稍后处理
             ngx_post_event(rev, &ngx_posted_events);
             return;
         }
 
-        rev->handler(rev);
+        rev->handler(rev);					//否则直接调用ngx_http_wait_request_handler
         return;
     }
+								//如果没有可读
 
-    ngx_add_timer(rev, c->listening->post_accept_timeout);
+    ngx_add_timer(rev, c->listening->post_accept_timeout);	//添加定时器
     ngx_reusable_connection(c, 1);
 
-    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {		//加入epoll监听读时间
         ngx_http_close_connection(c);
         return;
     }
@@ -385,14 +388,14 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http wait request handler");
 
-    if (rev->timedout) {
+    if (rev->timedout) {					//如果超时，关闭链接
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
         ngx_http_close_connection(c);
         return;
     }
 
     if (c->close) {
-        ngx_http_close_connection(c);
+        ngx_http_close_connection(c);				//如果标记关闭，关闭链接
         return;
     }
 
@@ -425,7 +428,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
         b->end = b->last + size;
     }
 
-    n = c->recv(c, b->last, size);
+    n = c->recv(c, b->last, size);				//读取数据
 
     if (n == NGX_AGAIN) {
 
@@ -489,7 +492,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
 
     ngx_reusable_connection(c, 0);
 
-    c->data = ngx_http_create_request(c);
+    c->data = ngx_http_create_request(c);				//创建ngx_http_request_t数据结构
     if (c->data == NULL) {
         ngx_http_close_connection(c);
         return;
@@ -935,9 +938,9 @@ ngx_http_process_request_line(ngx_event_t *rev)
             }
         }
 
-        rc = ngx_http_parse_request_line(r, r->header_in);
+        rc = ngx_http_parse_request_line(r, r->header_in);		//解析HTTP请求第一行，获得method、协议版本等信息
 
-        if (rc == NGX_OK) {
+        if (rc == NGX_OK) {						//第一阶段解析完成
 
             /* the request line has been parsed successfully */
 
@@ -955,12 +958,12 @@ ngx_http_process_request_line(ngx_event_t *rev)
                 r->http_protocol.len = r->request_end - r->http_protocol.data;
             }
 
-            if (ngx_http_process_request_uri(r) != NGX_OK) {
+            if (ngx_http_process_request_uri(r) != NGX_OK) {		//获取URI、args
                 return;
             }
 
-            if (r->host_start && r->host_end) {
-
+            if (r->host_start && r->host_end) {				//如果已经获取host则检查host，标记host位置，后续就不
+									//再解析header中的host了
                 host.len = r->host_end - r->host_start;
                 host.data = r->host_start;
 
@@ -999,7 +1002,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
             }
 
 
-            if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
+            if (ngx_list_init(&r->headers_in.headers, r->pool, 20,	//初始化header_in列表
                               sizeof(ngx_table_elt_t))
                 != NGX_OK)
             {
@@ -1009,13 +1012,13 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             c->log->action = "reading client request headers";
 
-            rev->handler = ngx_http_process_request_headers;
+            rev->handler = ngx_http_process_request_headers;		//设置hander，进入解析请求头部阶段
             ngx_http_process_request_headers(rev);
 
             return;
         }
 
-        if (rc != NGX_AGAIN) {
+        if (rc != NGX_AGAIN) {						//解析出错，终止链接
 
             /* there was error while a request line parsing */
 
@@ -1027,7 +1030,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
         /* NGX_AGAIN: a request line parsing is still incomplete */
 
-        if (r->header_in->pos == r->header_in->end) {
+        if (r->header_in->pos == r->header_in->end) {			//请求第一行还未解析完成
 
             rv = ngx_http_alloc_large_header_buffer(r, 1);
 
@@ -1250,7 +1253,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
         /* the host header could change the server configuration context */
         cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
-        rc = ngx_http_parse_header_line(r, r->header_in,
+        rc = ngx_http_parse_header_line(r, r->header_in,			//解析头部
                                         cscf->underscores_in_headers);
 
         if (rc == NGX_OK) {
@@ -1322,15 +1325,15 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
             r->request_length += r->header_in->pos - r->header_name_start;
 
-            r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
+            r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;		//标记进入下一阶段
 
-            rc = ngx_http_process_request_header(r);
+            rc = ngx_http_process_request_header(r);			//检查几个header是否符合标准
 
             if (rc != NGX_OK) {
                 return;
             }
 
-            ngx_http_process_request(r);
+            ngx_http_process_request(r);				//进入请求执行阶段
 
             return;
         }
@@ -1885,7 +1888,7 @@ ngx_http_process_request(ngx_http_request_t *r)
 #endif
 
     if (c->read->timer_set) {
-        ngx_del_timer(c->read);
+        ngx_del_timer(c->read);					//移除读超时定时器
     }
 
 #if (NGX_STAT_STUB)
@@ -1895,11 +1898,11 @@ ngx_http_process_request(ngx_http_request_t *r)
     r->stat_writing = 1;
 #endif
 
-    c->read->handler = ngx_http_request_handler;
+    c->read->handler = ngx_http_request_handler;		//设置读写事件的回调
     c->write->handler = ngx_http_request_handler;
     r->read_event_handler = ngx_http_block_reading;
 
-    ngx_http_handler(r);
+    ngx_http_handler(r);					//里面设置了//r->write_event_handler = ngx_http_core_run_phases;
 
     ngx_http_run_posted_requests(c);
 }
