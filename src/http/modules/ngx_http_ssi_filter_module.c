@@ -4,6 +4,9 @@
  * Copyright (C) Nginx, Inc.
  */
 
+/*
+    支持SSI(server side include)功能，将文件内容包含到网页中并返回给用户。
+*/
 
 #include <ngx_config.h>
 #include <ngx_core.h>

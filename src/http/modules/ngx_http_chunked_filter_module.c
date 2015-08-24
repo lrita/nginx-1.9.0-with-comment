@@ -4,6 +4,9 @@
  * Copyright (C) Nginx, Inc.
  */
 
+/*
+    支持chunk编码
+*/
 
 #include <ngx_config.h>
 #include <ngx_core.h>

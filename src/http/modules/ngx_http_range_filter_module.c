@@ -44,6 +44,9 @@
  * "--0123456789--" CRLF
  */
 
+/*
+    处理请求中的Range信息，根据Range中的要求返回文件中的一部分给用户。
+*/
 
 typedef struct {
     off_t        start;

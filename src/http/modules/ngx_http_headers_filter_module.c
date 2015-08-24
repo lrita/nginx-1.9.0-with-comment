@@ -3,7 +3,9 @@
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
  */
-
+/*
+    仅对HTTP包体进行处理。允许通过配置nginx.conf文件，在返回给用户的相应中添加对应的header。
+*/
 
 #include <ngx_config.h>
 #include <ngx_core.h>

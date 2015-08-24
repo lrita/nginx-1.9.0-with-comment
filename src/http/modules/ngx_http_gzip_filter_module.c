@@ -4,6 +4,9 @@
  * Copyright (C) Nginx, Inc.
  */
 
+/*
+    把特定的HTTP响应包体(如网页或者文本文件)进行gzip压缩，再把压缩后的内容返回给用户。
+*/
 
 #include <ngx_config.h>
 #include <ngx_core.h>

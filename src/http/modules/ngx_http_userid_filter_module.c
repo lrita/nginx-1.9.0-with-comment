@@ -4,6 +4,9 @@
  * Copyright (C) Nginx, Inc.
  */
 
+/*
+    仅对HTTP头部进行处理。这就是执行configure命令时提到的http_useid_module模块，它基于cookie提供了简单的认证管理功能。
+*/
 
 #include <ngx_config.h>
 #include <ngx_core.h>

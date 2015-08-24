@@ -4,6 +4,10 @@
  * Copyright (C) Nginx, Inc.
  */
 
+/*
+  仅对HTTP头部做处理。在返回200成功时，根据请求中的If-Modified-Since或者If-Unmodified-Since头部取得浏览器缓存文件的
+时间，再分析返回用户文件的最后修改时间，以此决定是否直接发送304 Not Modified响应给用户。
+*/
 
 #include <ngx_config.h>
 #include <ngx_core.h>

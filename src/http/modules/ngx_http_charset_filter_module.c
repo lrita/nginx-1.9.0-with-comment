@@ -4,6 +4,9 @@
  * Copyright (C) Nginx, Inc.
  */
 
+/*
+    可以将文本类型返回给用户的响应包，按照nginx.conf的配置重新进行编码，再返回给用户。
+*/
 
 #include <ngx_config.h>
 #include <ngx_core.h>
